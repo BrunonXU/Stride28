@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 68" fill="none">
+  <!-- 阶梯图标：3 级台阶，代表 stride（步伐）和渐进学习 -->
+  <g transform="translate(4, 4)">
+    <!-- 第一级台阶 -->
+    <rect x="0" y="40" width="18" height="18" rx="3" fill="#D97757" opacity="0.4"/>
+    <!-- 第二级台阶 -->
+    <rect x="20" y="22" width="18" height="36" rx="3" fill="#D97757" opacity="0.7"/>
+    <!-- 第三级台阶 -->
+    <rect x="40" y="4" width="18" height="54" rx="3" fill="#D97757"/>
+  </g>
+  <!-- 文字 -->
+  <text x="74" y="48" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="40" font-weight="700" fill="#1A1A18" letter-spacing="-1">
+    Stride<tspan fill="#D97757">28</tspan>
+  </text>
+</svg>

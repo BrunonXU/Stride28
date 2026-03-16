@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# 开发文档 & 配置
+.kiro/
+docs/
+TODO.md
+scripts/
+tests/
+backend/tests/
+
+# 数据 & 缓存
+data/
+browser_data/
+.hypothesis/
+.pytest_cache/
+__pycache__/
+
+# 环境
+.env
+.env.local
+venv/
+.venv/
+
+# 前端（后端镜像不需要）
+frontend/
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,153 @@
+# ===========================================
+# Python
+# ===========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ===========================================
+# Virtual Environment
+# ===========================================
+venv/
+ENV/
+env/
+.venv/
+.conda/
+conda-env/
+
+# ===========================================
+# IDE & Editor
+# ===========================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+.spyderproject
+.spyproject
+
+# ===========================================
+# Environment Variables (IMPORTANT!)
+# ===========================================
+.env
+.env.local
+.env.*.local
+
+# ===========================================
+# Data & Cache
+# ===========================================
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ===========================================
+# Logs
+# ===========================================
+*.log
+logs/
+*.log.*
+
+# ===========================================
+# OS Generated Files
+# ===========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ===========================================
+# Streamlit (legacy)
+# ===========================================
+.streamlit/
+
+# ===========================================
+# Testing & Coverage
+# ===========================================
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+tests/
+backend/tests/__pycache__/
+
+# ===========================================
+# Jupyter Notebooks
+# ===========================================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ===========================================
+# Type Checkers
+# ===========================================
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# ===========================================
+# Kiro & Docs (开发文档，不公开)
+# ===========================================
+.kiro/
+docs/*
+!docs/assets/
+docs/assets/*
+!docs/assets/*.gif
+!docs/assets/*.png
+!docs/assets/*.svg
+TODO.md
+
+# ===========================================
+# Scripts (POC 实验脚本，不公开)
+# ===========================================
+scripts/
+
+# ===========================================
+# Temporary Files
+# ===========================================
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# ===========================================
+# Frontend (React)
+# ===========================================
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# ===========================================
+# Browser Data
+# ===========================================
+browser_data/
