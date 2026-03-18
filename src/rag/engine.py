@@ -207,16 +207,27 @@ class RAGEngine:
 
         if reranker and reranker.is_available():
             # 两阶段检索：大范围召回 → 精排
+            import time as _time
             initial_k = retrieve_k or (k * 3)
+
+            t_emb = _time.perf_counter()
             results = self._vectorstore.similarity_search_with_score(
                 query=query, k=initial_k, filter=filter,
             )
+            ms_emb = round((_time.perf_counter() - t_emb) * 1000, 1)
+
             if not results:
                 return []
 
             passages = [doc.page_content for doc, _ in results]
             try:
+                t_rnk = _time.perf_counter()
                 reranked = reranker.rerank(query, passages, top_k=k)
+                ms_rnk = round((_time.perf_counter() - t_rnk) * 1000, 1)
+                logger.info(
+                    "[RAGEngine] timing: embedding recall %d docs in %sms, rerank %d→%d in %sms",
+                    len(results), ms_emb, len(passages), k, ms_rnk,
+                )
             except Exception as e:
                 logger.error("[RAGEngine] Reranker 运行时异常，降级为 embedding-only: %s", e)
                 return [
@@ -233,6 +244,17 @@ class RAGEngine:
                     metadata=doc.metadata,
                     score=rr.score,
                 ))
+
+            # 评测日志：对比 embedding 排序 vs reranker 排序（截断到 top 10 避免日志过长）
+            if retrieval_results:
+                preview = min(10, k, len(results))
+                emb_top_ids = [results[i][0].metadata.get("material_id", "?")[:8] for i in range(preview)]
+                rnk_top_ids = [r.metadata.get("material_id", "?")[:8] for r in retrieval_results[:preview]]
+                logger.info(
+                    "[RAGEngine] rerank done: retrieve_k=%d → top_%d | emb_top10=%s | rnk_top10=%s",
+                    initial_k, k, emb_top_ids, rnk_top_ids,
+                )
+
             return retrieval_results
         else:
             # 降级：embedding-only（用 k 而非 retrieve_k，避免噪声）

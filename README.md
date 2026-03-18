@@ -3,14 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>A stateful multi-source research and planning agent.</strong><br/>
-  一个有状态的多源调研与规划 Agent。
-</p>
-
-<p align="center">
-  28 = 四周。用一个月的时间，围绕一个目标完成从调研到执行的完整闭环。<br/>
-  通过<strong>搜索、筛选、上下文沉淀与规划生成</strong>，将分散信息转化为可执行流程。<br/>
-  当前版本优先面向<strong>学习与面试准备场景</strong>进行设计与优化。
+  AI 驱动的调研与规划助手。把分散的信息变成可执行的计划。
 </p>
 
 <p align="center">
@@ -26,179 +19,76 @@
 </p>
 
 <p align="center">
-  <a href="#快速开始">快速开始</a> •
+  <a href="#它解决什么问题">为什么</a> •
   <a href="#核心能力">核心能力</a> •
-  <a href="#系统架构">系统架构</a> •
-  <a href="#开发路线">开发路线</a> •
+  <a href="#快速开始">快速开始</a> •
+  <a href="#架构">架构</a> •
+  <a href="#路线图">路线图</a> •
   <a href="#参与贡献">参与贡献</a>
 </p>
 
 <p align="center">
-  <img src="docs/assets/全局.png" alt="Stride28 三栏布局全局界面" width="800" />
+  <img src="docs/assets/全局.png" alt="Stride28 界面" width="800" />
 </p>
 
 ---
 
 ## 它解决什么问题
 
-真实任务很少是一次性完成的。你通常需要：找资料 → 比较筛选 → 沉淀关键信息 → 形成计划 → 执行中持续调整。
+学一个新东西，你通常要：找资料 → 筛选 → 整理 → 制定计划 → 执行 → 复盘。大多数 AI 工具只帮你做其中一步。
 
-大多数 AI 工具只做其中一步。Stride28 把这条链路串成一个有状态的 Agent workflow：
+Stride28 把整条链路串起来，变成一个持续累积上下文的 workflow：
 
 ```
-目标设定 → 多源搜索 → 筛选评估 → 材料沉淀 → 规划生成 → 对话辅导 → 进度追踪 → 迭代调整
+多源搜索 → 质量筛选 → 材料沉淀 → 规划生成 → 对话辅导 → 进度追踪 → 迭代调整
 ```
 
-Agent 的上下文 = 你的材料 + 对话历史 + 用户画像 + 完成进度。所有输出都基于这个持续累积的上下文，而不是通用模板。
+你的材料、对话历史、学习画像、完成进度——全部是 Agent 的上下文。所有输出都基于这个不断增长的上下文生成，而不是每次从零开始。
 
 ---
 
 ## 核心能力
 
-### 多源调研（Multi-source Research）
+### 🔍 多源搜索聚合
 
-围绕同一个目标，从多个平台聚合候选信息。当前已接入：
+从 6 个平台并发搜索，经过两阶段质量漏斗（互动数据初筛 → LLM 质量评估），只有高质量内容进入后续链路。不是简单的 API 聚合——每个平台有独立的反爬策略、数据提取逻辑和质量评分权重。
 
-- 小红书（签名 + httpx 直连）
-- 知乎（API 直连）
-- GitHub（Playwright 浏览器代理）
-
-更多来源（B站、YouTube、Google 等）正在接入中。搜索结果经过两阶段漏斗：
-
-1. **互动数据初筛**（EngagementRanker）：按点赞、收藏、评论比例打分，广告内容自动降权
-2. **LLM 质量评估**（QualityAssessor）：批量评估，生成评分、推荐理由、内容摘要、评论区结论
-
-进入后续链路的不是"所有搜索结果"，而是经过筛选的高质量内容。
+支持平台：小红书 · 知乎 · B站 · YouTube · GitHub · Google
 
 <p align="center">
-  <img src="docs/assets/search-demo-compressed.gif" alt="多源搜索聚合演示" width="800" />
+  <img src="docs/assets/search-demo-compressed.gif" alt="多源搜索" width="800" />
 </p>
 
-### 上下文沉淀（Context Building）
+### 📚 上下文沉淀
 
-搜索结果可一键添加为材料，PDF / Markdown 可直接上传。所有材料进入统一的上下文池，后续的规划、对话、内容生成都建立在这个持续累积的上下文之上。
+搜索结果一键添加为材料，PDF / Markdown 直接上传。所有材料进入统一上下文池，后续的规划、对话、内容生成都建立在这个持续累积的上下文之上。
 
-对话也分两种模式：
-- **聊天区**：把材料拖进输入框，基于指定文档问答（显式附加，禁用全局 RAG）
-- **Studio**：两阶段检索（embedding 召回 → Cross-Encoder reranker 精排）+ 分层注入（Layer 1 材料摘要全局视野 + Layer 2 RAG 精准证据），生成内容基于完整知识库
+### 💬 材料感知对话
+
+两种模式：聊天区把材料拖进输入框做精准问答；Studio 用两阶段检索（embedding 召回 → Cross-Encoder reranker 精排）+ 分层注入生成内容。聊天区不做全局 RAG，只用你显式拖入的材料——避免无关内容污染回答。
 
 <p align="center">
   <img src="docs/assets/chat-demo.gif" alt="材料感知对话" width="800" />
 </p>
 
-### 规划生成（Planning & Structured Output）
+### 🎯 7 种结构化工具
 
-基于上下文生成结构化输出，当前版本支持 7 种工具：
+学习指南 · 学习计划 · 闪卡 · 测验 · 思维导图 · 进度报告 · 日总结
 
-| 工具 | 做什么 |
-|------|--------|
-| 学习指南 | 知识体系路线图，标注重点和前置依赖 |
-| 学习计划 | 逐日任务分解，渲染为可交互时间线 |
-| 闪卡 | 问答卡片，自动加权困惑点 |
-| 测验 | 多题型（单选/多选/判断），针对薄弱点出题 |
-| 思维导图 | 知识结构可视化（markmap.js） |
-| 进度报告 | 完成率、知识覆盖度、薄弱环节分析 |
-| 日总结 | 当天回顾 + 跨天知识关联 |
-
-计划不是生成一次就不变——当你添加了新材料、讨论了新概念、或完成/跳过了任务，下次生成会综合这些信号调整。
+所有工具都是上下文感知的——基于你的材料、对话历史、用户画像和完成进度动态生成，不是通用模板。Prompt 在 Python 侧按条件分支组装，LLM 收到的是明确无歧义的指令。
 
 <p align="center">
-  <img src="docs/assets/timeline.png" alt="结构化学习计划时间线" width="800" />
+  <img src="docs/assets/timeline.png" alt="学习计划时间线" width="800" />
 </p>
 
-### 跨会话记忆（Cross-session Memory）
+### 🧠 跨会话记忆
 
-双层记忆机制保持上下文连续性：
-
-- **Working Memory**：最近 12 条消息保留原文，保证当前对话连贯
-- **Episodic Memory**：超出窗口的历史压缩为结构化摘要（困惑点、已掌握概念、偏好），注入后续对话
-
-清空对话 ≠ 遗忘。上周聊过的问题，这周继续问时 Agent 还记得。
-
-### 生成后校验（Post-generation Validation）
-
-对学习计划、闪卡、测验等结构化内容，系统会做格式校验、字段修正和结果清洗，确保输出不仅"看起来对"，而且可消费、可执行。
+双层记忆：Working Memory 保留最近对话原文，Episodic Memory 把历史压缩为结构化摘要。清空对话 ≠ 遗忘——你之前的困惑点、学习偏好会持续影响后续生成。
 
 <p align="center">
-  <img src="docs/assets/学习指南页面.png" alt="学习指南" width="800" />
+  <img src="docs/assets/学习指南页面.png" alt="学习指南" width="400" />
+  <img src="docs/assets/思维导图.png" alt="思维导图" width="400" />
 </p>
-
-<p align="center">
-  <img src="docs/assets/思维导图.png" alt="思维导图" width="800" />
-</p>
-
----
-
-## 系统架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  前端：React 18 + TypeScript + Zustand + TailwindCSS         │
-│  三栏布局：资源面板 | 聊天区 | Studio 面板                    │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ REST API + SSE
-┌──────────────────────────┴──────────────────────────────────┐
-│  后端：FastAPI                                               │
-│  路由：plans / chat / studio / search / resource / upload /    │
-│        notes / dev / provider                                 │
-├──────────────────────────────────────────────────────────────┤
-│  核心逻辑（src/）                                             │
-│  ├── agents/       TutorAgent + Episodic Memory               │
-│  ├── providers/    LLM 抽象层（4 家服务商热切换）              │
-│  ├── specialists/  搜索模块（6 平台 + 两阶段漏斗）             │
-│  └── rag/          ChromaDB 向量检索 + Reranker 精排           │
-├──────────────────────────────────────────────────────────────┤
-│  持久化：SQLite（WAL 模式）+ ChromaDB                         │
-├──────────────────────────────────────────────────────────────┤
-│  可观测：LangSmith 全链路追踪                                  │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### 技术选型
-
-| 层 | 技术 | 为什么选它 |
-|----|------|-----------|
-| 前端 | React 18 + Zustand | 轻量状态管理，6 个 Store 职责清晰 |
-| 样式 | TailwindCSS | 原子化 CSS，组件级样式隔离 |
-| 后端 | FastAPI | 异步原生，SSE 流式响应开箱即用 |
-| 搜索 | Playwright + httpx | 浏览器渲染 + API 直连混合策略 |
-| 向量存储 | ChromaDB | 嵌入式，零运维，适合单用户场景 |
-| 数据库 | SQLite (WAL) | 9 张表 + 级联删除，单文件部署 |
-| LLM | OpenAI 兼容协议 | 一套接口接 DeepSeek / OpenAI / 智谱 / 通义千问 |
-| 可观测 | LangSmith | Prompt 调试 + 链路追踪，开发期必备 |
-
-### 支持的 LLM Provider
-
-通过 OpenAI 兼容协议，一套接口覆盖多家服务商。Embedding 固定使用 DashScope text-embedding-v2（必须配置 DashScope API Key）。
-
-| Provider | 默认模型 | 说明 |
-|----------|---------|------|
-| 通义千问 (tongyi) | qwen-turbo | 需要 DASHSCOPE_API_KEY |
-| DeepSeek（推荐） | deepseek-chat (V3) | 性价比高，中文效果好 |
-| OpenAI | gpt-4o-mini | 英文场景或需要 GPT 系列时 |
-| 智谱 (zhipu) | glm-4.7-flash | 国内免翻，速度快 |
-
-LLM Provider 可在前端设置页热切换，不需要重启。
-
----
-
-## 配置说明
-
-复制 `.env.example` 为 `.env`，至少需要配置：
-
-```env
-# LLM（推荐 DeepSeek，性价比最高）
-DEEPSEEK_API_KEY=sk-your-deepseek-api-key
-
-# Embedding（必须，DashScope text-embedding-v2）
-DASHSCOPE_API_KEY=sk-your-dashscope-api-key
-
-# 默认 Provider（可选值：deepseek / openai / zhipu / tongyi）
-DEFAULT_PROVIDER=deepseek
-DEFAULT_MODEL=deepseek-chat
-```
-
-Embedding 模型固定为 `text-embedding-v2`，不可切换（切换会导致 ChromaDB 向量不兼容）。LLM Provider 可在前端设置页随时切换。
 
 ---
 
@@ -207,37 +97,24 @@ Embedding 模型固定为 `text-embedding-v2`，不可切换（切换会导致 C
 ### 环境要求
 
 - Python 3.10+、Node.js 18+
-- LLM API Key（推荐 [DeepSeek](https://platform.deepseek.com/)）
-- [DashScope](https://dashscope.console.aliyun.com/) API Key（Embedding 用，必须）
+- LLM API Key（推荐 [DeepSeek](https://platform.deepseek.com/)，性价比最高）
+- [DashScope](https://dashscope.console.aliyun.com/) API Key（Embedding 必须）
 
-### 方式一：Docker（推荐）
+### Docker（推荐）
 
 ```bash
-git clone https://github.com/BrunonXU/Stride28.git
-cd Stride28
+git clone https://github.com/BrunonXU/Stride28.git && cd Stride28
 cp .env.example .env
-# 编辑 .env，填入 DEEPSEEK_API_KEY 和 DASHSCOPE_API_KEY
+# 编辑 .env，填入 API Key
 
 docker compose up -d
+# 前端: http://localhost  后端: http://localhost:8000
 ```
 
-打开 `http://localhost`。
+### 本地开发
 
 ```bash
-# 查看日志
-docker compose logs -f
-
-# 停止服务（数据不会丢失，持久化在 Docker named volume 中）
-docker compose down
-```
-
-> **注意**：Docker 部署下，基于浏览器代理的搜索（小红书、知乎等需要 cookie 的平台）可能受限。API 直连的平台（B站等）和 Playwright headless 搜索（YouTube、GitHub、Google）正常工作。如需完整搜索功能，建议使用本地开发方式部署。
-
-### 方式二：本地开发
-
-```bash
-git clone https://github.com/BrunonXU/Stride28.git
-cd Stride28
+git clone https://github.com/BrunonXU/Stride28.git && cd Stride28
 
 # 后端
 python -m venv venv && source venv/bin/activate  # Windows: .\venv\Scripts\activate
@@ -248,60 +125,77 @@ playwright install chromium
 cd frontend && npm install && cd ..
 
 # 配置
-cp .env.example .env
-# 编辑 .env，填入 DEEPSEEK_API_KEY 和 DASHSCOPE_API_KEY
+cp .env.example .env  # 编辑填入 API Key
 
-# 启动
-uvicorn backend.main:app --port 8000  # 终端 1
-cd frontend && npm run dev                       # 终端 2
+# 启动（两个终端）
+uvicorn backend.main:app --port 8000
+cd frontend && npm run dev
+# 打开 http://localhost:3000
 ```
 
-打开 `http://localhost:3000`。
+### 配置说明
 
-首次启动会自动注入一个示例学习规划（"Agent 开发"），包含完整的搜索历史、材料、对话记录和 Studio 生成内容，方便你直接体验所有功能。
+| 变量 | 必须 | 说明 |
+|------|:----:|------|
+| `DEEPSEEK_API_KEY` | ✅ | LLM（至少配一个 provider） |
+| `DASHSCOPE_API_KEY` | ✅ | Embedding（text-embedding-v2，不可切换） |
+| `RERANKER_ENABLED` | — | 启用 Cross-Encoder reranker，首次启动下载 ~2.3GB 模型 |
+| `GITHUB_TOKEN` | — | 提升 GitHub 搜索速率（无 token 10次/分钟） |
+| `LANGSMITH_API_KEY` | — | LangSmith 全链路追踪 |
+| `DEFAULT_PROVIDER` | — | 默认 `deepseek`，可选 `openai` / `zhipu` / `moonshot` / `tongyi` |
+
+完整配置见 [`.env.example`](.env.example)。
+
+> 首次启动会注入示例学习规划（含搜索历史、材料、Studio 内容），可以直接体验完整流程。
 
 ---
 
-## 开发路线
+## 架构
 
-- [x] 6 平台搜索聚合 + 两阶段质量漏斗
-- [x] NotebookLM 风格三栏布局
-- [x] 材料感知对话（显式附加 + RAG 双模式）
-- [x] SQLite 持久化（9 张表 + 级联删除 + WAL）
-- [x] Episodic Memory 跨会话记忆
-- [x] 7 种 Studio 工具 + PromptBuilder 动态指令
-- [x] 多 Provider 热切换
-- [x] LangSmith 全链路追踪
-- [x] Docker 一键部署
-- [x] LangGraph 聊天编排器
-- [x] RAG 分层注入（Layer 1 材料摘要 + Layer 2 动态 top_k）
-- [x] Cross-Encoder Reranker 两阶段检索（retrieve_k 召回 → rerank 精排 → top_k 保留）
-- [x] Coverage-first 上下文预算策略（按工具类型差异化 RETRIEVAL_CONFIG）
-- [ ] RAG 评测流水线
-- [ ] 多模态材料理解（图片/音频）
+```
+┌─────────────────────────────────────────────────────────┐
+│  React + TypeScript + Zustand + TailwindCSS             │
+│  三栏布局：材料 │ 对话 │ Studio                          │
+└────────────────────────┬────────────────────────────────┘
+                         │ REST API + SSE
+┌────────────────────────┴────────────────────────────────┐
+│  FastAPI                                                 │
+│  plans / chat / studio / search / resource / upload      │
+├──────────────────────────────────────────────────────────┤
+│  agents/       TutorAgent + Episodic Memory              │
+│  providers/    OpenAI-compatible 抽象（4 家 LLM）         │
+│  specialists/  搜索模块（6 平台 + 两阶段漏斗）            │
+│  rag/          ChromaDB + Cross-Encoder Reranker         │
+├──────────────────────────────────────────────────────────┤
+│  SQLite (WAL) + ChromaDB (text-embedding-v2)             │
+│  LangSmith 全链路追踪                                     │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 路线图
+
+**已完成：** NotebookLM 风格三栏 UI · 6 平台搜索聚合 · 两阶段质量漏斗 · 材料感知对话 · SQLite 持久化 · Episodic Memory · 动态 Prompt 组装 · 多 Provider 支持 · LangSmith 追踪 · RAG 分层注入 · Cross-Encoder Reranker · 覆盖优先 context budget
+
+**进行中 / 计划：**
+- [ ] 7 种 Studio 工具的动态 prompt 优化
+- [ ] 进度环 UI 组件
+- [ ] LangGraph chat orchestrator
+- [ ] RAG 评估 pipeline（hit@k）
+- [ ] 多模态材料理解（PDF 图片 + VL 模型）
+- [ ] Demo 视频 & 引导流程
 
 ---
 
 ## 参与贡献
 
-欢迎 PR。如果你对以下方向感兴趣，非常欢迎交流：
+欢迎 PR、Issue、Feature Request。
 
-- Agent workflow 设计与编排
-- 多源搜索与排序策略
-- RAG 与上下文工程
-- 结构化内容生成与校验
-
-### 项目结构
-
-```
-Stride28/
-├── backend/            # FastAPI 后端（路由 + 数据库 + Prompt 构建）
-├── frontend/           # React 前端（6 个 Zustand Store + 三栏布局）
-├── src/                # 核心逻辑（Agent + Provider + 搜索 + RAG）
-├── .env.example        # 环境变量模板
-├── docker-compose.yml  # Docker 编排
-└── requirements.txt    # Python 依赖
-```
+开发注意事项：
+- 后端改动（Python / `.env`）需要重启服务，前端改动通过 Vite HMR 热更新
+- 数据库字段 `snake_case`，API 返回 `camelCase`（自动转换）
+- Embedding 模型固定为 `text-embedding-v2`，切换会导致向量不兼容
 
 ---
 
@@ -312,6 +206,5 @@ Stride28/
 ---
 
 <p align="center">
-  把分散的信息变成可执行的流程。<br/>
-  如果 Stride28 对你有帮助，考虑给个 ⭐
+  如果 Stride28 对你有帮助，欢迎给个 ⭐
 </p>

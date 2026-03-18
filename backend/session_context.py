@@ -53,6 +53,7 @@ class SessionContext:
                 llm = ProviderFactory.create_llm(provider_name="deepseek")
 
             self._tutor = TutorAgent(llm_provider=llm)
+            self._tutor.set_rag_engine(self.rag_engine)
         return self._tutor
 
 

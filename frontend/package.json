@@ -21,6 +21,7 @@
     "react-query": "^3.39.3",
     "react-router-dom": "^6.26.0",
     "react-syntax-highlighter": "^15.5.0",
+    "rehype-slug": "^6.0.0",
     "zustand": "^4.5.4"
   },
   "devDependencies": {

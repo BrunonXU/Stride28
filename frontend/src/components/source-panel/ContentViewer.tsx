@@ -7,6 +7,7 @@
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
+import rehypeSlug from 'rehype-slug'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
@@ -144,7 +145,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({
                 prose-li:text-[15px] prose-li:leading-7 prose-li:text-[#3C4043]
                 prose-img:rounded-lg prose-img:shadow-sm
               ">
-                <ReactMarkdown>{content}</ReactMarkdown>
+                <ReactMarkdown rehypePlugins={[rehypeSlug]}>{content}</ReactMarkdown>
               </article>
             ) : (
               <div className="text-[15px] text-[#3C4043] whitespace-pre-wrap break-words leading-7">

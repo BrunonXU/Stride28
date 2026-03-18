@@ -139,7 +139,7 @@ async def generate_studio_content(content_type: str, body: StudioRequest):
             currentDayNumber=body.currentDayNumber,
             learnerProfile=learner_profile,
         )
-        builder = PromptBuilder(rag_engine=ctx.tutor.rag_engine)
+        builder = PromptBuilder(rag_engine=ctx.rag_engine)
         user_prompt, system_prompt = builder.build(content_type, learning_context)
         # 不设 max_tokens，让模型自行决定输出长度（避免长 JSON 被截断）
         content = await asyncio.to_thread(ctx.tutor.generate, user_prompt, system_prompt=system_prompt)
@@ -234,7 +234,7 @@ async def generate_studio_content_internal(content_type: str, plan_id: str) -> d
             dailyHours=profile_data.get("dailyHours", ""),
         )
     learning_context = LearningContext(planId=plan_id, learnerProfile=learner_profile)
-    builder = PromptBuilder(rag_engine=ctx.tutor.rag_engine)
+    builder = PromptBuilder(rag_engine=ctx.rag_engine)
     title = _TITLES.get(content_type, content_type)
 
     try:
@@ -537,7 +537,7 @@ async def regenerate_plan(body: RegeneratePlanRequest):
             currentDayNumber=completed_count + 1,
             learnerProfile=learner_profile,
         )
-        builder = PromptBuilder(rag_engine=ctx.tutor.rag_engine)
+        builder = PromptBuilder(rag_engine=ctx.rag_engine)
         user_prompt, system_prompt = builder.build("learning-plan", learning_context)
 
         # Preserve_Mode 指令：只生成未完成部分

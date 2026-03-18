@@ -244,19 +244,19 @@ export const MaterialList: React.FC<MaterialListProps> = ({
             <div key={platform}>
               <button
                 onClick={() => toggleGroup(platform)}
-                className="flex items-center gap-1.5 w-full py-1.5 text-left group"
+                className="flex items-center gap-2 w-full py-2 text-left group"
               >
                 <svg
-                  width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                   className={`text-[#9AA0A6] transition-transform duration-150 ${collapsedGroups.has(platform) ? '' : 'rotate-90'}`}
                 >
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
-                <PlatformIcon platform={platform} size={13} />
-                <span className="text-[11px] font-medium text-[#5F6368]">
+                <PlatformIcon platform={platform} size={18} />
+                <span className="text-[13px] font-medium text-[#5F6368]">
                   {PLATFORM_LABELS[platform]}
                 </span>
-                <span className="text-[10px] text-[#9AA0A6]">· {items.length}</span>
+                <span className="text-[12px] text-[#9AA0A6]">· {items.length}</span>
               </button>
               {!collapsedGroups.has(platform) && (
                 <ul role="listbox" aria-label={`${PLATFORM_LABELS[platform]}材料`} className="flex flex-col gap-1" onKeyDown={handleListKeyDown}>

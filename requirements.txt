@@ -80,6 +80,6 @@ openai>=1.50.0
 PyExecJS>=1.5.1
 
 # ============================================
-# Reranker（可选：不安装时 reranker 自动禁用，降级为 embedding-only）
+# Reranker（本地 Cross-Encoder 精排，不安装时自动降级为 embedding-only）
 # ============================================
-# FlagEmbedding>=1.2.0  # pip install FlagEmbedding（首次调用自动下载模型 ~1.1GB）
+FlagEmbedding>=1.2.0
