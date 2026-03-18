@@ -1,8 +1,13 @@
 """
-EngagementRanker - 互动数据初筛排序器
+EngagementRanker — 互动数据初筛排序器
 
 基于评论/点赞比例、标题关键词加权和广告降权，
-对跨平台搜索结果进行初筛排序。
+对跨平台搜索结果进行初筛排序。不调 LLM，纯数值计算。
+
+公式：comment_like_ratio × (1 + title_boost) × ad_penalty
+GitHub 特殊处理：直接用 stars 排序。
+
+调用方：SearchOrchestrator.search_all_platforms_stream()
 """
 
 import logging

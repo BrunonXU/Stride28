@@ -1,8 +1,10 @@
 """
-搜索结果缓存
+search_cache — 搜索结果内存缓存
 
-基于内存的搜索结果缓存，使用 query + sorted platforms 生成哈希键，
-支持 TTL 过期机制。
+基于 query + sorted platforms 生成 SHA-256 哈希键，支持 TTL 过期（默认 1 小时）。
+避免短时间内重复搜索相同关键词浪费浏览器资源和 LLM 调用。
+
+调用方：SearchOrchestrator
 """
 
 import hashlib

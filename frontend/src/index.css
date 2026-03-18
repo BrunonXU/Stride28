@@ -112,6 +112,34 @@
   }
 }
 
+/* 修复 Tailwind Prose Markdown 渲染的 pre/code 颜色对比度问题 */
+.prose pre {
+  background-color: #F8F9FA !important;
+  color: #202124 !important;
+  border: 1px solid #E8EAED;
+}
+.prose pre code {
+  color: #202124 !important;
+  background-color: transparent !important;
+}
+.prose :not(pre) > code {
+  background-color: #F8F9FA !important;
+  color: #D97757 !important;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.875em;
+  border: 1px solid #E8EAED;
+}
+.prose blockquote {
+  font-style: normal !important;
+  color: #5F6368 !important;
+  border-left-color: #D97757 !important;
+  background-color: #FFF7ED;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-radius: 0 8px 8px 0;
+}
+
 /* animate-in / animate-out（简单实现） */
 @keyframes fade-in {
   from {

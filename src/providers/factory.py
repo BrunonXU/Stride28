@@ -100,8 +100,8 @@ class ProviderFactory:
         Returns:
             EmbeddingProvider 实例
         """
-        # 默认值
-        provider_name = provider_name or os.getenv("DEFAULT_PROVIDER", "tongyi")
+        # 默认值：优先读 EMBEDDING_PROVIDER，与 LLM 的 DEFAULT_PROVIDER 解耦
+        provider_name = provider_name or os.getenv("EMBEDDING_PROVIDER") or os.getenv("DEFAULT_PROVIDER", "tongyi")
         model = model or "text-embedding-v2"
         
         # 查找 Provider

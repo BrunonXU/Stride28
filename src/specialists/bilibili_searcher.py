@@ -1,8 +1,10 @@
 """
-B站视频搜索器
+BiliBiliSearcher — B站视频搜索器
 
 使用 httpx 调用 B站搜索 API 获取视频结果，不依赖 Playwright 浏览器。
 API 失败时回退到构造 B站搜索链接作为降级结果。
+
+调用方：SearchOrchestrator._search_single_platform()
 """
 
 import logging

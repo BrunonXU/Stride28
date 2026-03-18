@@ -9,7 +9,6 @@ from typing import Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.agents.tutor import TutorAgent
-    from src.core.progress import ProgressTracker
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,6 @@ class SessionContext:
     def __init__(self, plan_id: str):
         self.plan_id = plan_id
         self._tutor: Optional[TutorAgent] = None
-        self._progress: Optional[ProgressTracker] = None
 
     @property
     def tutor(self) -> "TutorAgent":
@@ -48,13 +46,6 @@ class SessionContext:
             self._tutor = TutorAgent(llm_provider=llm)
         return self._tutor
 
-    @property
-    def progress(self) -> "ProgressTracker":
-        if self._progress is None:
-            logger.info(f"[SessionContext] Initializing ProgressTracker for plan {self.plan_id}")
-            from src.core.progress import ProgressTracker
-            self._progress = ProgressTracker(session_id=self.plan_id)
-        return self._progress
 
 
 def get_session(plan_id: str) -> SessionContext:

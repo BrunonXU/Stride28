@@ -236,17 +236,6 @@ class Quiz(BaseModel):
         return len(self.questions)
 
 
-class QuizResult(BaseModel):
-    """测验结果"""
-    quiz_id: str
-    answers: List[str]                 # 用户答案
-    correct_count: int                 # 正确数量
-    total_count: int                   # 总题数
-    accuracy: float                    # 准确率
-    wrong_topics: List[str] = []       # 错误的知识点
-    feedback: str = ""                 # 反馈建议
-
-
 # ==================== 进度报告相关模型 ====================
 
 class ProgressReport(BaseModel):
@@ -312,13 +301,4 @@ class SessionMode(str, Enum):
     QUIZ = "quiz"    # 测验模式
 
 
-class SessionState(BaseModel):
-    """会话状态"""
-    domain: str
-    mode: SessionMode = SessionMode.FREE
-    current_topic: str = ""
-    messages: List[Dict[str, str]] = []  # 对话历史
-    quiz: Optional[Quiz] = None          # 当前 Quiz
-    quiz_progress: int = 0               # Quiz 进度
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+

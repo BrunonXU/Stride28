@@ -1,7 +1,12 @@
 """
-浏览器 Agent 内部数据模型
+browser_models — 搜索模块内部数据模型
 
-仅在浏览器搜索模块内部使用，不暴露给外部调用者。
+定义搜索流水线各阶段的数据结构，仅在 specialists 模块内部流转。
+外部调用者通过 src.core.models.SearchResult 获取最终结果。
+
+RawSearchResult  — 平台搜索器返回的原始结果（标题/URL/互动数据/评论）
+ResourceDetail   — 详情页提取的结构化数据（正文/点赞/收藏/图片）
+ScoredResult     — 经 LLM 评估后的带分结果（评分/摘要/推荐理由）
 """
 
 from typing import Dict, Any, List

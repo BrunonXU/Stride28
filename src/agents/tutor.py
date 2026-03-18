@@ -17,21 +17,21 @@ from typing import Optional, List, Dict, Any, Generator
 
 from langsmith import traceable
 
-from .base import BaseAgent
-from src.core.models import SessionMode, Quiz, Question, SearchResult
+from src.core.models import SessionMode, Quiz
 from src.rag import RAGEngine
-from src.providers.base import Message
+from src.providers.base import LLMProvider, Message
 from src.specialists.resource_searcher import ResourceSearcher
-from src.core.progress import ProgressTracker
 
 logger = logging.getLogger(__name__)
 
 
-class TutorAgent(BaseAgent):
+class TutorAgent:
     """
     教学 Agent
     
-    负责与用户互动学习
+    负责与用户互动学习。
+    原 BaseAgent 的 LLM 调用和事件回调逻辑已 inline 到此类中
+    （BaseAgent 只有 TutorAgent 一个子类，ABC 抽象对单一子类无意义）。
     """
     
     name = "TutorAgent"
@@ -78,20 +78,33 @@ class TutorAgent(BaseAgent):
         time_str = f"{now.strftime('%Y年%m月%d日 %H:%M:%S')} {weekdays[now.weekday()]}"
         return f"【系统提示：当前真实时间是 {time_str}】\n\n" + self._base_system_prompt
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, llm_provider: LLMProvider, config: Optional[Dict[str, Any]] = None, on_event=None):
+        self.llm = llm_provider
+        self.config = config or {}
+        self.on_event = on_event
         self.rag_engine: Optional[RAGEngine] = None
         self.current_mode = SessionMode.FREE
         self.current_quiz: Optional[Quiz] = None
         self.quiz_progress = 0
         # 文档元信息：让 tutor 知道用户上传了什么文件
         self.doc_meta: Optional[Dict[str, Any]] = None  # {"filename": "xxx.pdf", "title": "...", "chunks": 270}
-        # 资源搜索器和进度追踪器（可选注入）
+        # 资源搜索器（可选注入）
         self._resource_searcher: Optional[ResourceSearcher] = None
-        self._progress_tracker: Optional[ProgressTracker] = None
         # 当前回复的来源追踪列表
         self._current_sources: List[Dict[str, Any]] = []
     
+    def _emit_event(self, event_type: str, name: str, detail: str = ""):
+        """事件回调（原 BaseAgent 方法）"""
+        if self.on_event:
+            try:
+                self.on_event(event_type, name, detail)
+            except Exception:
+                pass
+
+    def _call_llm(self, prompt: str, system_prompt: Optional[str] = None, max_tokens: Optional[int] = None) -> str:
+        """便捷 LLM 调用封装（原 BaseAgent 方法）"""
+        return self.llm.simple_chat(prompt, system_prompt=system_prompt, max_tokens=max_tokens)
+
     def set_rag_engine(self, rag_engine: Optional[RAGEngine]):
         """设置 RAG 引擎"""
         self.rag_engine = rag_engine
@@ -103,10 +116,6 @@ class TutorAgent(BaseAgent):
     def set_resource_searcher(self, searcher: ResourceSearcher):
         """设置资源搜索器"""
         self._resource_searcher = searcher
-
-    def set_progress_tracker(self, tracker: ProgressTracker):
-        """设置进度追踪器"""
-        self._progress_tracker = tracker
 
     @traceable(name="tutor.generate")
     def generate(self, prompt: str, system_prompt: Optional[str] = None, max_tokens: Optional[int] = None) -> str:
@@ -122,40 +131,7 @@ class TutorAgent(BaseAgent):
         """记录一条来源信息"""
         self._current_sources.append(source)
 
-    def _build_progress_context(self) -> str:
-        """构建进度上下文文本，注入到 prompt 中"""
-        if not self._progress_tracker:
-            return ""
 
-        try:
-            summary = self._progress_tracker.get_progress_summary()
-            if summary["total_days"] == 0:
-                return ""
-
-            parts = [
-                f"[学习进度上下文：总计 {summary['total_days']} 天，"
-                f"已完成 {summary['completed_days']} 天，"
-                f"进度 {summary['percentage']:.0%}。"
-            ]
-            if summary["current_day"] is not None:
-                parts.append(f"当前应学习第 {summary['current_day']} 天的内容。")
-            else:
-                parts.append("所有天数已完成。")
-
-            # 列出未完成的天
-            uncompleted = [d for d in summary["days"] if not d.completed]
-            if uncompleted:
-                topics = ", ".join(f"Day {d.day_number}: {d.title}" for d in uncompleted[:3])
-                parts.append(f"待学习: {topics}")
-                if len(uncompleted) > 3:
-                    parts.append(f"...等共 {len(uncompleted)} 天未完成")
-
-            return " ".join(parts) + "]"
-        except Exception as e:
-            logger.warning(f"[TutorAgent] Failed to build progress context: {e}")
-            return ""
-
-    
     @traceable(name="tutor.run")
     def run(
         self,
@@ -192,7 +168,7 @@ class TutorAgent(BaseAgent):
     ) -> str:
         """处理带搜索结果的用户输入，生成包含资源推荐的回复。
 
-        由 Orchestrator 在搜索完成后调用，将搜索结果注入回复。
+        在搜索完成后调用，将搜索结果注入回复。
         """
         self._reset_sources()
 
@@ -361,15 +337,8 @@ class TutorAgent(BaseAgent):
                         "source": "RAG 知识库",
                     })
 
-        # 3. 构建进度上下文
-        progress_context = self._build_progress_context()
-
-        # 4. 组装 prompt（历史 + 上下文 + 当前问题）
+        # 3. 组装 prompt（历史 + 上下文 + 当前问题）
         prompt_parts = []
-
-        # 注入进度上下文
-        if progress_context:
-            prompt_parts.append(progress_context)
 
         # 注入 Episodic Memory 摘要（对话历史之前，帮助 LLM 理解学习者背景）
         if episodic_summary:
@@ -472,7 +441,6 @@ class TutorAgent(BaseAgent):
         return response
     
     @traceable(name="tutor.stream_response")
-    @traceable(name="tutor.stream_response")
     def stream_response(
         self,
         user_input: str,
@@ -506,24 +474,6 @@ class TutorAgent(BaseAgent):
             Message(role="system", content=self.system_prompt),
             Message(role="user", content=prompt),
         ]
-
-        # DEBUG: 输出完整 prompt 到文件，方便排查
-        try:
-            import os
-            os.makedirs("data", exist_ok=True)
-            with open("data/last_llm_call.txt", "w", encoding="utf-8") as f:
-                f.write("=== SYSTEM PROMPT ===\n")
-                f.write(self.system_prompt)
-                f.write("\n\n=== USER PROMPT ===\n")
-                f.write(prompt)
-                f.write(f"\n\n=== META ===\n")
-                f.write(f"use_rag={use_rag}\n")
-                f.write(f"has_material_context={material_context is not None and len(material_context or '') > 0}\n")
-                f.write(f"material_context_len={len(material_context or '')}\n")
-                f.write(f"prompt_len={len(prompt)}\n")
-                f.write(f"doc_meta={self.doc_meta}\n")
-        except Exception:
-            pass
 
         try:
             for chunk in self.llm.stream(messages):
@@ -562,7 +512,7 @@ class TutorAgent(BaseAgent):
         >  又能基于用户资料给出个性化回答。"
         
         使用示例：
-            tutor = TutorAgent()
+            tutor = TutorAgent(llm_provider=llm)
             tutor.set_rag_engine(rag_engine)
             answer = tutor.answer("什么是 Self-Attention?")
         """

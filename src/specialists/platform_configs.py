@@ -1,8 +1,12 @@
 """
-平台搜索配置
+platform_configs — 平台搜索配置
 
-每个平台的搜索逻辑通过 PlatformConfig 数据类配置（URL 模板、CSS 选择器、资源类型映射），
-新增平台只需添加配置，无需修改核心逻辑。
+每个平台的搜索逻辑通过 PlatformConfig 数据类配置（URL 模板、CSS 选择器、
+资源类型映射、评分权重），新增平台只需添加配置，无需修改核心逻辑。
+
+已配置平台：xiaohongshu / bilibili / zhihu / github / google / youtube / stackoverflow / wechat
+
+被 BrowserAgent、SearchOrchestrator、QualityScorer、PipelineExecutor 等广泛引用。
 """
 
 from dataclasses import dataclass, field

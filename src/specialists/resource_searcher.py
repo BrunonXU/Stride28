@@ -1,11 +1,16 @@
 """
-多源资源搜索专家模块
+ResourceSearcher — 同步搜索包装层
 
-职责：
-1. 统一资源搜索器（ResourceSearcher）
-2. 统一返回 SearchResult 列表
-3. 使用 SearchOrchestrator 协调多平台并发搜索
-4. 弹性搜索量策略：根据用户选择的平台数量调整每平台搜索条数
+为聊天内搜索（ChatOrchestrator._search_node）提供同步接口，
+内部委托 SearchOrchestrator 执行异步搜索。
+
+弹性搜索量策略：
+- 未选平台（默认全搜）：每平台 10 条
+- 选了 1 个平台：该平台 60 条
+- 选了多个平台：40 条均分
+
+调用方：backend/chat_orchestrator.py, backend/routers/search.py（同步端点）
+依赖：SearchOrchestrator
 """
 
 import logging

@@ -201,14 +201,11 @@ async def generate_studio_content(content_type: str, body: StudioRequest):
 
 @router.put("/plan/day/{day_id}/complete", response_model=DayCompleteResponse)
 async def complete_day(day_id: int, plan_id: str = ""):
-    """标记 Day 完成（幂等）"""
-    try:
-        from backend.session_context import get_session
-        ctx = get_session(plan_id)
-        ctx.progress.mark_day_completed(day_id)
-    except Exception as e:
-        logger.warning(f"[studio] ProgressTracker.mark_day_completed failed: {e}")
-        # 幂等：即使后端失败，前端状态已更新，返回成功
+    """标记 Day 完成（幂等）
+    
+    进度状态由前端 studioStore + SQLite progress 表管理，
+    此端点仅做幂等确认，不再依赖旧的 ProgressTracker。
+    """
     return DayCompleteResponse(success=True, dayNumber=day_id)
 
 
