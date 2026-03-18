@@ -134,14 +134,17 @@ def _build_material_context(plan_id: str, material_ids: List[str], user_message:
             logger.info("[chat] 长文件/无contentText走RAG: %s (contentText=%d chars)", title, len(content_text))
             long_file_ids.append(mid)
 
-    # 长文件 RAG 检索
+    # 长文件 RAG 检索（reranker 精排 + 扩大召回量）
     if long_file_ids and user_message:
         try:
             rag = get_session(plan_id).rag_engine
-            k = min(5 * len(long_file_ids), 15)
+            retrieve_k = min(20 * len(long_file_ids), 50)
+            k = min(10 * len(long_file_ids), 25)
             results = rag.retrieve(
                 query=user_message,
                 k=k,
+                retrieve_k=retrieve_k,
+                rerank=True,
                 filter={"material_id": {"$in": long_file_ids}},
             )
             logger.info(f"[chat] RAG retrieve for upload materials: ids={long_file_ids}, results={len(results)}")

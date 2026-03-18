@@ -21,27 +21,35 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RetrievalStrategy:
-    """检索策略配置，按 Studio 工具类型差异化。"""
-    top_k: int                    # RAG 检索返回数量
-    enable_layer_one: bool        # 是否启用 Layer 1 材料摘要
-    enable_layer_two: bool        # 是否启用 Layer 2 RAG 检索
-    model_context_tier: str = "standard"  # 未来降级策略接口
+    """检索策略配置，按 Studio 工具类型差异化。
+
+    top_k: reranker 精排后保留量（也是降级时的 embedding-only k）
+    retrieve_k: embedding 初始召回量（reranker 输入，降级时不使用）
+    max_per_doc: 单文档 chunk 上限（多样性护栏，避免高相似度长文档刷屏）
+    """
+    top_k: int
+    retrieve_k: int
+    enable_layer_one: bool
+    enable_layer_two: bool
+    max_per_doc: int = 6
+    model_context_tier: str = "standard"
 
 
 # 集中配置映射表：content_type → 检索策略
+# top_k/retrieve_k 值基于 reranker 精排后的 coverage-first 策略
 RETRIEVAL_CONFIG: dict[str, RetrievalStrategy] = {
-    "learning-plan":    RetrievalStrategy(top_k=10, enable_layer_one=True,  enable_layer_two=True),
-    "study-guide":      RetrievalStrategy(top_k=10, enable_layer_one=True,  enable_layer_two=True),
-    "day-summary":      RetrievalStrategy(top_k=6,  enable_layer_one=True,  enable_layer_two=True),
-    "mind-map":         RetrievalStrategy(top_k=6,  enable_layer_one=True,  enable_layer_two=True),
-    "flashcards":       RetrievalStrategy(top_k=4,  enable_layer_one=True,  enable_layer_two=True),
-    "quiz":             RetrievalStrategy(top_k=2,  enable_layer_one=True,  enable_layer_two=True),  # per-day top-2
-    "progress-report":  RetrievalStrategy(top_k=0,  enable_layer_one=False, enable_layer_two=False),
+    "learning-plan":    RetrievalStrategy(top_k=40, retrieve_k=100, enable_layer_one=True,  enable_layer_two=True, max_per_doc=8),
+    "study-guide":      RetrievalStrategy(top_k=40, retrieve_k=100, enable_layer_one=True,  enable_layer_two=True, max_per_doc=8),
+    "day-summary":      RetrievalStrategy(top_k=25, retrieve_k=60,  enable_layer_one=True,  enable_layer_two=True, max_per_doc=6),
+    "mind-map":         RetrievalStrategy(top_k=25, retrieve_k=60,  enable_layer_one=True,  enable_layer_two=True, max_per_doc=6),
+    "flashcards":       RetrievalStrategy(top_k=20, retrieve_k=50,  enable_layer_one=True,  enable_layer_two=True, max_per_doc=6),
+    "quiz":             RetrievalStrategy(top_k=5,  retrieve_k=12,  enable_layer_one=True,  enable_layer_two=True, max_per_doc=3),
+    "progress-report":  RetrievalStrategy(top_k=0,  retrieve_k=0,   enable_layer_one=False, enable_layer_two=False),
 }
 
-DEFAULT_STRATEGY = RetrievalStrategy(top_k=5, enable_layer_one=True, enable_layer_two=True)
+DEFAULT_STRATEGY = RetrievalStrategy(top_k=10, retrieve_k=30, enable_layer_one=True, enable_layer_two=True)
 
-MAX_LAYER_ONE_CHARS = 8000  # Layer 1 材料摘要总长度上限
+MAX_LAYER_ONE_CHARS = 20000  # Layer 1 材料摘要总长度上限（50 个材料的摘要需要更大空间）
 
 
 def get_retrieval_config(content_type: str) -> RetrievalStrategy:
@@ -420,7 +428,7 @@ class PromptBuilder:
         if not query:
             return ""
         try:
-            return self.rag_engine.build_context(query, k=config.top_k)
+            return self.rag_engine.build_context(query, k=config.top_k, retrieve_k=config.retrieve_k)
         except Exception as e:
             logger.warning("[PromptBuilder] RAG retrieval failed: %s", e)
             return ""

@@ -18,9 +18,12 @@ RAG Engine - 检索增强生成引擎
 >  基于这些内容回答，既利用了 LLM 的推理能力，又保证了准确性。"
 """
 
+import logging
 import os
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 import dashscope
 from pydantic import BaseModel
@@ -183,54 +186,85 @@ class RAGEngine:
         query: str,
         k: int = 5,
         filter: Optional[Dict[str, Any]] = None,
+        rerank: bool = True,
+        retrieve_k: Optional[int] = None,
     ) -> List[RetrievalResult]:
-        """
-        检索相关文档
-        
+        """检索相关文档（支持两阶段检索：embedding 召回 → reranker 精排）。
+
         Args:
             query: 查询文本
-            k: 返回结果数量
+            k: 最终返回结果数量（reranker 精排后保留量）
             filter: 元数据过滤条件
-            
+            rerank: 是否启用 reranker 精排
+            retrieve_k: embedding 初始召回量，默认 k*3（仅 rerank=True 时生效）
+
         Returns:
-            检索结果列表
+            检索结果列表（按相关性降序）
         """
-        # 使用 similarity_search_with_score
-        results = self._vectorstore.similarity_search_with_score(
-            query=query,
-            k=k,
-            filter=filter,
-        )
-        
-        # 转换为 RetrievalResult
-        retrieval_results = []
-        for doc, score in results:
-            retrieval_results.append(RetrievalResult(
-                content=doc.page_content,
-                metadata=doc.metadata,
-                score=float(score),
-            ))
-        
-        return retrieval_results
+        from src.rag.reranker import get_reranker
+
+        reranker = get_reranker() if rerank else None
+
+        if reranker and reranker.is_available():
+            # 两阶段检索：大范围召回 → 精排
+            initial_k = retrieve_k or (k * 3)
+            results = self._vectorstore.similarity_search_with_score(
+                query=query, k=initial_k, filter=filter,
+            )
+            if not results:
+                return []
+
+            passages = [doc.page_content for doc, _ in results]
+            try:
+                reranked = reranker.rerank(query, passages, top_k=k)
+            except Exception as e:
+                logger.error("[RAGEngine] Reranker 运行时异常，降级为 embedding-only: %s", e)
+                return [
+                    RetrievalResult(content=doc.page_content, metadata=doc.metadata, score=float(score))
+                    for doc, score in results[:k]
+                ]
+
+            # 用 reranker 结果的 index 映射回原始 metadata
+            retrieval_results = []
+            for rr in reranked:
+                doc, _orig_score = results[rr.index]
+                retrieval_results.append(RetrievalResult(
+                    content=doc.page_content,
+                    metadata=doc.metadata,
+                    score=rr.score,
+                ))
+            return retrieval_results
+        else:
+            # 降级：embedding-only（用 k 而非 retrieve_k，避免噪声）
+            results = self._vectorstore.similarity_search_with_score(
+                query=query, k=k, filter=filter,
+            )
+            return [
+                RetrievalResult(content=doc.page_content, metadata=doc.metadata, score=float(score))
+                for doc, score in results
+            ]
     
     def build_context(
         self,
         query: str,
         k: int = 5,
         separator: str = "\n\n---\n\n",
+        rerank: bool = True,
+        retrieve_k: Optional[int] = None,
     ) -> str:
-        """
-        构建 RAG 上下文
-        
+        """构建 RAG 上下文。
+
         Args:
             query: 查询文本
-            k: 检索结果数量
+            k: 最终检索结果数量
             separator: 结果分隔符
-            
+            rerank: 是否启用 reranker 精排
+            retrieve_k: embedding 初始召回量
+
         Returns:
             组装好的上下文字符串
         """
-        results = self.retrieve(query, k=k)
+        results = self.retrieve(query, k=k, rerank=rerank, retrieve_k=retrieve_k)
         
         if not results:
             return ""
