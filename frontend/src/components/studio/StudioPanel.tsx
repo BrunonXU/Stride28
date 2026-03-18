@@ -14,12 +14,12 @@ import type { GeneratedContent, Note, LearnerProfile } from '../../types'
 
 /** 现代白卡片风格工具定义 */
 const TOOLS = [
-  { type: 'study-guide', icon: '📖', label: '学习指南', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]' },
-  { type: 'flashcards', icon: '🃏', label: '闪卡', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]' },
-  { type: 'quiz', icon: '🧪', label: '测验', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]' },
-  { type: 'learning-plan', icon: '📅', label: '学习计划', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]' },
-  { type: 'progress-report', icon: '📊', label: '进度报告', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]' },
-  { type: 'mind-map', icon: '🧠', label: '思维导图', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]' },
+  { type: 'study-guide', icon: '📖', label: '学习指南', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]', disabled: false },
+  { type: 'flashcards', icon: '🃏', label: '闪卡', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]', disabled: false },
+  { type: 'quiz', icon: '🧪', label: '测验', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]', disabled: false },
+  { type: 'learning-plan', icon: '📅', label: '学习计划', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]', disabled: false },
+  { type: 'progress-report', icon: '📊', label: '进度报告', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]', disabled: true },
+  { type: 'mind-map', icon: '🧠', label: '思维导图', bg: 'bg-white hover:bg-[#FFF7ED]', border: 'border-[#E8EAED] hover:border-[#F2DFD3]', disabled: false },
 ] as const
 
 const TYPE_ICONS: Record<string, string> = {
@@ -314,9 +314,13 @@ export const StudioPanel: React.FC<StudioPanelProps> = ({ planId = '', isCollaps
               )}
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                 {TOOLS.map(t => (
-                  <button key={t.type} onClick={() => handleToolClick(t.type, t.label)}
-                    disabled={loadingTools.has(t.type)}
-                    className={`relative flex flex-col justify-between h-[90px] text-left p-3.5 rounded-2xl ${t.bg} transition-all duration-50 ease-out hover:-translate-y-[2px] cursor-pointer group shadow-sm hover:shadow border ${t.border}`}>
+                  <button key={t.type} onClick={() => !t.disabled && handleToolClick(t.type, t.label)}
+                    disabled={t.disabled || loadingTools.has(t.type)}
+                    className={`relative flex flex-col justify-between h-[90px] text-left p-3.5 rounded-2xl transition-all duration-50 ease-out shadow-sm border ${
+                      t.disabled
+                        ? 'opacity-40 cursor-not-allowed bg-[#F8F9FA] text-[#9AA0A6] grayscale border-[#E8EAED]'
+                        : `${t.bg} hover:-translate-y-[2px] cursor-pointer group hover:shadow ${t.border}`
+                    }`}>
                     <div className="flex w-full justify-between items-start">
                       <div className="w-8 h-8 rounded-full bg-[#F4F5F7] group-hover:bg-white transition-colors flex items-center justify-center -ml-0.5 -mt-0.5 shadow-sm border border-[#E8EAED]">
                         <span className="text-[15px] leading-none">{t.icon}</span>

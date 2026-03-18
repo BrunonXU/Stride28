@@ -65,6 +65,11 @@ async def _process_pdf(material_id: str, plan_id: str, file_path: Path, filename
             content = file_path.read_bytes()
             text = _extract_pdf_text(content)
             if text:
+                # 存储全文到 extra_data.contentText（read-merge-write，不覆盖已有字段）
+                existing = database.get_material_extra_data(material_id) or {}
+                existing["contentText"] = text.strip()
+                database.update_material_extra_data(material_id, existing)
+
                 database.update_material_status(material_id, "chunking")
                 await asyncio.sleep(0.3)
                 rag.add_document(
@@ -142,6 +147,11 @@ async def _process_text_file(material_id: str, plan_id: str, file_path: Path, fi
 
         text = file_path.read_text(encoding="utf-8", errors="replace")
         if text.strip():
+            # 存储全文到 extra_data.contentText（read-merge-write，不覆盖已有字段）
+            existing = database.get_material_extra_data(material_id) or {}
+            existing["contentText"] = text.strip()
+            database.update_material_extra_data(material_id, existing)
+
             database.update_material_status(material_id, "chunking")
             await asyncio.sleep(0.2)
             try:

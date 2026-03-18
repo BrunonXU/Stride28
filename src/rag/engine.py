@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 
-from src.providers import ProviderFactory, EmbeddingProvider
+
 
 
 class Document(BaseModel):
@@ -54,7 +54,6 @@ class RAGEngine:
         self,
         collection_name: str = "knowledge_base",
         persist_directory: Optional[str] = None,
-        embedding_provider: Optional[EmbeddingProvider] = None,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
     ):
@@ -64,7 +63,6 @@ class RAGEngine:
         Args:
             collection_name: ChromaDB collection 名称
             persist_directory: 持久化目录，默认从环境变量读取
-            embedding_provider: Embedding Provider，默认使用工厂创建
             chunk_size: 切分块大小
             chunk_overlap: 切分重叠大小
         """
@@ -76,9 +74,6 @@ class RAGEngine:
         
         # 确保目录存在
         Path(self.persist_directory).mkdir(parents=True, exist_ok=True)
-        
-        # 初始化 Embedding Provider
-        self._embedding_provider = embedding_provider or ProviderFactory.create_embedding()
         
         # 初始化文本切分器
         self._splitter = RecursiveCharacterTextSplitter(

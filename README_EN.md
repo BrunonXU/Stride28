@@ -114,7 +114,7 @@ Supported platforms: Xiaohongshu · Bilibili · YouTube · GitHub · Google · Z
 </p>
 
 ### 💬 Material-Aware Chat
-Drag materials into the chat input — AI answers grounded in YOUR documents, not generic knowledge. Studio tools use global RAG for comprehensive content generation.
+Drag materials into the chat input — AI answers grounded in YOUR documents, not generic knowledge. Chat disables global RAG (explicit attachment only). Studio tools use two-stage retrieval (embedding recall → Cross-Encoder reranker) with layered injection (Layer 1 material summaries for global coverage + Layer 2 RAG for precise evidence).
 
 ### 🧠 Episodic Memory
 AI compresses long conversations into episodic summaries. Clear your chat, start fresh — but AI still remembers what confused you last time. This powers smarter flashcards, quizzes, and study guides.
@@ -162,10 +162,10 @@ Swap LLM providers without changing code. One `OpenAICompatibleProvider` class c
 │  ├── agents/       TutorAgent + Episodic Memory              │
 │  ├── providers/    OpenAI-compatible abstraction (4 vendors)  │
 │  ├── specialists/  Search module (6 platforms + 2-stage funnel)│
-│  └── rag/          ChromaDB vector store                      │
+│  └── rag/          ChromaDB vector store + Reranker            │
 ├──────────────────────────────────────────────────────────────┤
 │  Persistence                                                  │
-│  ├── SQLite (WAL mode) — 8 tables, cascade delete             │
+│  ├── SQLite (WAL mode) — 9 tables, cascade delete             │
 │  └── ChromaDB — text-embedding-v2 (DashScope)                 │
 ├──────────────────────────────────────────────────────────────┤
 │  Observability: LangSmith (@traceable)                        │
@@ -277,11 +277,14 @@ Open `http://localhost:5173` and create your first learning plan.
 - [x] Multi-source search aggregation (6 platforms)
 - [x] Two-stage quality funnel (engagement + LLM)
 - [x] Material-aware chat (explicit attachment mode)
-- [x] SQLite unified persistence (8 tables + WAL)
+- [x] SQLite unified persistence (9 tables + WAL)
 - [x] Episodic Memory (working memory + episodic summary)
 - [x] PromptBuilder with dynamic instruction assembly
 - [x] Multi-provider support (4 LLM vendors)
 - [x] LangSmith full-chain tracing
+- [x] RAG layered injection (Layer 1 summaries + Layer 2 dynamic top_k)
+- [x] Cross-Encoder Reranker two-stage retrieval (retrieve_k recall → rerank → top_k)
+- [x] Coverage-first context budget strategy (per-tool RETRIEVAL_CONFIG)
 - [ ] Dynamic prompt optimization for all 7 Studio tools
 - [ ] Progress ring UI component (Day X/N visualization)
 - [ ] LangGraph-based chat orchestrator

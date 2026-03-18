@@ -20,6 +20,36 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class RetrievalStrategy:
+    """检索策略配置，按 Studio 工具类型差异化。"""
+    top_k: int                    # RAG 检索返回数量
+    enable_layer_one: bool        # 是否启用 Layer 1 材料摘要
+    enable_layer_two: bool        # 是否启用 Layer 2 RAG 检索
+    model_context_tier: str = "standard"  # 未来降级策略接口
+
+
+# 集中配置映射表：content_type → 检索策略
+RETRIEVAL_CONFIG: dict[str, RetrievalStrategy] = {
+    "learning-plan":    RetrievalStrategy(top_k=10, enable_layer_one=True,  enable_layer_two=True),
+    "study-guide":      RetrievalStrategy(top_k=10, enable_layer_one=True,  enable_layer_two=True),
+    "day-summary":      RetrievalStrategy(top_k=6,  enable_layer_one=True,  enable_layer_two=True),
+    "mind-map":         RetrievalStrategy(top_k=6,  enable_layer_one=True,  enable_layer_two=True),
+    "flashcards":       RetrievalStrategy(top_k=4,  enable_layer_one=True,  enable_layer_two=True),
+    "quiz":             RetrievalStrategy(top_k=2,  enable_layer_one=True,  enable_layer_two=True),  # per-day top-2
+    "progress-report":  RetrievalStrategy(top_k=0,  enable_layer_one=False, enable_layer_two=False),
+}
+
+DEFAULT_STRATEGY = RetrievalStrategy(top_k=5, enable_layer_one=True, enable_layer_two=True)
+
+MAX_LAYER_ONE_CHARS = 8000  # Layer 1 材料摘要总长度上限
+
+
+def get_retrieval_config(content_type: str) -> RetrievalStrategy:
+    """获取指定工具类型的检索策略，未知类型返回默认值。"""
+    return RETRIEVAL_CONFIG.get(content_type, DEFAULT_STRATEGY)
+
+
+@dataclass
 class PromptTemplate:
     role_instruction: str       # system_prompt (role persona)
     generation_instruction: str # tool-specific generation instructions
@@ -290,7 +320,16 @@ class PromptBuilder:
         # 3. Formatted learner profile
         profile_text = self._format_learner_profile(learner_profile)
 
-        # 4. 对话历史互斥注入：有摘要 → 只用摘要；无摘要 → fallback 到 6 轮原文
+        # 4. Layer 1 材料摘要（全局视野）
+        config = get_retrieval_config(content_type)
+        material_summaries = ""
+        if config.enable_layer_one and plan_id:
+            try:
+                material_summaries = self._build_material_summaries(plan_id)
+            except Exception as e:
+                logger.warning("[PromptBuilder] Layer 1 材料摘要构建失败: %s", e)
+
+        # 5. 对话历史互斥注入：有摘要 → 只用摘要；无摘要 → fallback 到 6 轮原文
         episodic_summary = self._get_episodic_summary(plan_id)
         if episodic_summary:
             chat_history: list[dict] = []  # 摘要覆盖更广，不塞原文
@@ -303,6 +342,17 @@ class PromptBuilder:
             all_days=all_days,
             current_day_number=current_day_number,
             episodic_summary=episodic_summary,
+            material_summaries=material_summaries,
+        )
+
+        # DEBUG: 分层注入验证日志（验证完毕后删除）
+        logger.info(
+            "[PromptBuilder] build(%s) | top_k=%s L1=%s(%d chars) L2=%s(%d chars) episodic=%d chars | total_prompt=%d chars",
+            content_type, config.top_k,
+            "ON" if config.enable_layer_one else "OFF", len(material_summaries),
+            "ON" if config.enable_layer_two else "OFF", len(rag_context),
+            len(episodic_summary),
+            len(user_prompt),
         )
         
         # 6. role_instruction as system_prompt with current time
@@ -314,13 +364,51 @@ class PromptBuilder:
         
         return (user_prompt, system_prompt)
 
+    def _build_material_summaries(self, plan_id: str) -> str:
+        """Layer 1：从 DB 读取所有材料的 summary/keyPoints，格式化为摘要段落。
+
+        按材料创建时间顺序（DB 返回顺序），总长度上限 MAX_LAYER_ONE_CHARS。
+        无摘要数据的材料自动跳过。
+        """
+        materials = database.get_materials(plan_id)
+        parts: list[str] = []
+        total_len = 0
+
+        for mat in materials:
+            extra = mat.get("extraData") or {}
+            if not extra:
+                extra = database.get_material_extra_data(mat["id"]) or {}
+
+            summary = extra.get("contentSummary") or extra.get("summary") or ""
+            key_points = extra.get("keyPoints") or []
+
+            if not summary and not key_points:
+                continue
+
+            section = f"📄 {mat.get('name', '未知材料')}"
+            if summary:
+                section += f"\n摘要：{summary}"
+            if key_points:
+                section += "\n要点：" + "；".join(key_points)
+
+            if total_len + len(section) > MAX_LAYER_ONE_CHARS:
+                break
+            parts.append(section)
+            total_len += len(section)
+
+        if not parts:
+            return ""
+        return "\n\n".join(parts)
+
     def _retrieve_rag(self, content_type: str, ctx) -> str:
         """根据工具类型构造针对性 RAG 查询词并检索。
 
-        progress-report 不做 RAG 检索。
+        通过 RETRIEVAL_CONFIG 获取动态 top_k，progress-report 不做 RAG 检索。
         quiz 走专用多次检索路径（per-day top-2 合并去重）。
         """
-        if not self.rag_engine or content_type == "progress-report":
+        config = get_retrieval_config(content_type)
+
+        if not self.rag_engine or not config.enable_layer_two:
             return ""
 
         # quiz 专用：per-day 多次检索
@@ -332,7 +420,7 @@ class PromptBuilder:
         if not query:
             return ""
         try:
-            return self.rag_engine.build_context(query, k=5)
+            return self.rag_engine.build_context(query, k=config.top_k)
         except Exception as e:
             logger.warning("[PromptBuilder] RAG retrieval failed: %s", e)
             return ""
@@ -349,15 +437,15 @@ class PromptBuilder:
             return []
 
     def _get_episodic_summary(self, plan_id: str) -> str:
-        """从 DB 读取最新 episodic memory 摘要，截断到 1000 字符。"""
+        """从 DB 读取最新 episodic memory 摘要，截断到 2000 字符。"""
         if not plan_id:
             return ""
         try:
             latest_summary = database.get_latest_conversation_summary(plan_id)
             if latest_summary:
                 text = latest_summary.get("summaryText", "")
-                if len(text) > 1000:
-                    text = text[:1000] + "（摘要已截断）"
+                if len(text) > 2000:
+                    text = text[:2000] + "（摘要已截断）"
                 return text
         except Exception:
             pass  # 摘要获取失败不影响 Studio 生成
@@ -406,6 +494,7 @@ class PromptBuilder:
         all_days: list[dict] | None = None,
         current_day_number: int | None = None,
         episodic_summary: str = "",
+        material_summaries: str = "",
     ) -> str:
         """Compose final user_prompt from sections separated by ---."""
         sections: list[str] = []
@@ -418,7 +507,11 @@ class PromptBuilder:
         if episodic_summary:
             sections.append(f"[对话记忆摘要]\n{episodic_summary}")
 
-        # 1. RAG context (skip for progress-report — already handled by empty rag_context)
+        # 0.8 Layer 1 材料摘要（全局视野，在 RAG 检索之前）
+        if material_summaries:
+            sections.append(f"[材料摘要：全局视野]\n{material_summaries}")
+
+        # 1. RAG context (Layer 2, skip for progress-report — already handled by empty rag_context)
         if rag_context:
             sections.append(f"[材料上下文：RAG 检索结果]\n{rag_context}")
 
@@ -1195,9 +1288,9 @@ class PromptBuilder:
         if not all_chunks:
             return ""
 
-        # 按相关度排序（score 越小越相似，ChromaDB L2 距离），截断到 10
+        # 按相关度排序（score 越小越相似，ChromaDB L2 距离），截断到 15
         all_chunks.sort(key=lambda c: c.score)
-        top_chunks = all_chunks[:10]
+        top_chunks = all_chunks[:15]
 
         context_parts = []
         for i, chunk in enumerate(top_chunks, 1):

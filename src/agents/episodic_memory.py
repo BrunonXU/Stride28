@@ -31,7 +31,7 @@ WORKING_MEMORY_SIZE = 12         # Working Memory 窗口大小（与 chat.py 的
 MAX_SUMMARY_CHAIN_DEPTH = 3      # 最大摘要链深度
 MIN_SUMMARY_LENGTH = 50          # 摘要最小长度（字）
 MAX_SUMMARY_LENGTH = 800         # 摘要最大长度（字）
-MAX_SUMMARY_INJECT_CHARS = 1000  # 注入 prompt 时的最大字符数
+MAX_SUMMARY_INJECT_CHARS = 2000  # 注入 prompt 时的最大字符数
 
 
 class EpisodicMemory:

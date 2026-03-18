@@ -21,6 +21,15 @@ class SessionContext:
     def __init__(self, plan_id: str):
         self.plan_id = plan_id
         self._tutor: Optional[TutorAgent] = None
+        self._rag_engine = None  # Optional[RAGEngine]，懒加载
+
+    @property
+    def rag_engine(self):
+        """懒加载 RAGEngine，collection_name=plan_{plan_id}。"""
+        if self._rag_engine is None:
+            from src.rag import RAGEngine
+            self._rag_engine = RAGEngine(collection_name=f"plan_{self.plan_id}")
+        return self._rag_engine
 
     @property
     def tutor(self) -> "TutorAgent":

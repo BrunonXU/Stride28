@@ -18,6 +18,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend import database
+from backend.session_context import get_session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
@@ -41,12 +42,16 @@ def _build_material_context(plan_id: str, material_ids: List[str], user_message:
     """从数据库获取指定材料的内容，组装为可注入 prompt 的上下文文本。
 
     搜索来源材料（bilibili/xiaohongshu/other 等）：从 extra_data 提取内容。
-    上传文件材料（pdf/markdown/text）：通过 RAGEngine 按 material_id 过滤检索。
-    总上下文限制 8000 字符，按材料顺序截断。
+    上传文件材料（pdf/markdown/text）：
+      - 短文件（< 3000 字符）：从 extra_data.contentText 全量注入
+      - 长文件（>= 3000 字符）：通过 RAGEngine 按 material_id 过滤检索
+      - 无 contentText（历史数据）：回退到 RAG 检索
+    总上下文限制 100000 字符，按材料顺序截断。
     """
     MAX_MATERIALS = 5
     MAX_CONTENT_TEXT = 2000
-    MAX_TOTAL_CHARS = 8000
+    MAX_TOTAL_CHARS = 100000
+    SHORT_FILE_THRESHOLD = 50000
 
     if not material_ids:
         return ""
@@ -109,40 +114,57 @@ def _build_material_context(plan_id: str, material_ids: List[str], user_message:
         if len(sections) > 1:
             parts.append("\n".join(sections))
 
-    # 2) 上传文件材料：通过 RAG 按需检索
-    if upload_ids and user_message:
+    # 2) 上传文件材料：短文件全量注入，长文件走 RAG
+    long_file_ids = []  # 需要 RAG 检索的文件 ID
+    for mid in upload_ids:
+        mat = mat_map.get(mid, {})
+        title = mat.get("name") or mid[:8]
+        extra = mat.get("extraData") or {}
+        if not extra:
+            extra = database.get_material_extra_data(mid) or {}
+
+        content_text = extra.get("contentText") or ""
+
+        if content_text and len(content_text) < SHORT_FILE_THRESHOLD:
+            # 短文件：全量注入
+            logger.info("[chat] 短文件全量注入: %s (%d chars)", title, len(content_text))
+            parts.append(f"【材料：{title}】\n{content_text}")
+        else:
+            # 长文件或无 contentText（历史数据兼容）：标记走 RAG
+            logger.info("[chat] 长文件/无contentText走RAG: %s (contentText=%d chars)", title, len(content_text))
+            long_file_ids.append(mid)
+
+    # 长文件 RAG 检索
+    if long_file_ids and user_message:
         try:
-            from src.rag import RAGEngine
-            rag = RAGEngine(collection_name=f"plan_{plan_id}")
-            k = min(3 * len(upload_ids), 10)
+            rag = get_session(plan_id).rag_engine
+            k = min(5 * len(long_file_ids), 15)
             results = rag.retrieve(
                 query=user_message,
                 k=k,
-                filter={"material_id": {"$in": upload_ids}},
+                filter={"material_id": {"$in": long_file_ids}},
             )
-            logger.info(f"[chat] RAG retrieve for upload materials: ids={upload_ids}, results={len(results)}")
+            logger.info(f"[chat] RAG retrieve for upload materials: ids={long_file_ids}, results={len(results)}")
             # 按 material_id 分组
             grouped: dict = {}
             for r in results:
                 r_mid = r.metadata.get("material_id", "")
                 grouped.setdefault(r_mid, []).append(r)
 
-            for mid in upload_ids:
+            for mid in long_file_ids:
                 mat = mat_map.get(mid, {})
                 title = mat.get("name") or mid[:8]
                 chunks = grouped.get(mid, [])
                 if not chunks:
-                    # Fallback：RAG 无结果时注入元信息，让 LLM 至少知道有这个文件
                     parts.append(f"【材料：{title}】\n（该文件内容暂未索引到相关片段，请用户提供更具体的问题）")
                     continue
                 sections = [f"【材料：{title}】"]
-                for i, chunk in enumerate(chunks[:3], 1):
+                for i, chunk in enumerate(chunks, 1):
                     sections.append(f"[相关片段 {i}]\n{chunk.content}")
                 parts.append("\n\n".join(sections))
         except Exception as e:
             logger.warning(f"[chat] RAG retrieve failed for upload materials: {e}")
-            # Fallback：RAG 异常时也注入元信息
-            for mid in upload_ids:
+            for mid in long_file_ids:
                 mat = mat_map.get(mid, {})
                 title = mat.get("name") or mid[:8]
                 parts.append(f"【材料：{title}】\n（文件内容检索失败，请稍后重试）")
