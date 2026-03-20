@@ -13,16 +13,43 @@ import { PlatformIcon } from '../ui/PlatformIcon'
 import { useSearchStore } from '../../store/searchStore'
 import type { SearchResult, PlatformType, SearchStage } from '../../types'
 
-const PLATFORMS: { key: PlatformType; label: string; disabled?: boolean; tooltip?: string }[] = [
-  { key: 'xiaohongshu', label: '小红书' },
-  { key: 'zhihu', label: '知乎' },
-  { key: 'github', label: 'GitHub' },
-  { key: 'bilibili', label: 'B站', disabled: true, tooltip: '即将支持' },
-  { key: 'youtube', label: 'YouTube', disabled: true, tooltip: '即将支持' },
-  { key: 'google', label: 'Google', disabled: true, tooltip: '即将支持' },
-  { key: 'wechat', label: '微信', disabled: true, tooltip: '即将支持' },
-  { key: 'stackoverflow', label: 'SO', disabled: true, tooltip: '即将支持' },
+interface TierGroup {
+  tier: string
+  label: string
+  platforms: { key: PlatformType; label: string; disabled?: boolean; tooltip?: string }[]
+}
+
+const PLATFORM_TIERS: TierGroup[] = [
+  {
+    tier: 'community', label: '社区经验',
+    platforms: [
+      { key: 'xiaohongshu', label: '小红书' },
+      { key: 'zhihu', label: '知乎' },
+      { key: 'bilibili', label: 'B站', disabled: true, tooltip: '即将支持' },
+      { key: 'youtube', label: 'YouTube', disabled: true, tooltip: '即将支持' },
+    ],
+  },
+  {
+    tier: 'developer', label: '开发者',
+    platforms: [{ key: 'github', label: 'GitHub' }],
+  },
+  {
+    tier: 'academic', label: '学术',
+    platforms: [{ key: 'arxiv', label: 'arXiv' }],
+  },
+  {
+    tier: 'broad_web', label: '广域网络',
+    platforms: [
+      { key: 'tavily', label: 'Web搜索' },
+      { key: 'google', label: 'Google', disabled: true, tooltip: '已由 Tavily 替代' },
+      { key: 'wechat', label: '微信', disabled: true, tooltip: '即将支持' },
+      { key: 'stackoverflow', label: 'SO', disabled: true, tooltip: '即将支持' },
+    ],
+  },
 ]
+
+/** 扁平化所有平台（兼容 handleSearch 中的默认平台列表） */
+const ALL_PLATFORMS = PLATFORM_TIERS.flatMap(t => t.platforms)
 
 /** 根据 SSE stage 字段生成中文状态文案 */
 function stageToMessage(stage: SearchStage, evt?: any): string {
@@ -68,8 +95,20 @@ function parseResults(evt: any): SearchResult[] {
       imageUrls: item.imageUrls,
       topComments: item.topComments,
       contentText: item.contentText,
+      sourceTier: item.sourceTier,
+      author: item.author,
+      publishTime: item.publishTime,
+      fetchedAt: item.fetchedAt,
+      extractionMode: item.extractionMode,
+      sourceMetadata: item.sourceMetadata,
     }))
-    .sort((a: SearchResult, b: SearchResult) => b.qualityScore - a.qualityScore)
+    .sort((a: SearchResult, b: SearchResult) => {
+      // 混排：有 qualityScore 的在前按分降序，qualityScore=0 保持后端顺序
+      if (a.qualityScore > 0 && b.qualityScore > 0) return b.qualityScore - a.qualityScore
+      if (a.qualityScore > 0) return -1
+      if (b.qualityScore > 0) return 1
+      return 0  // 两者都是 0，保持后端返回顺序
+    })
 }
 
 export const SearchPanel: React.FC<SearchPanelProps> = ({ planId = '', onAddToMaterials, onViewDetail, onCheckedChange }) => {
@@ -123,7 +162,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ planId = '', onAddToMa
     const placeholderId = `search-${Date.now()}`
     store.setActiveSearch({
       query: query.trim(),
-      platforms: platforms ?? PLATFORMS.filter(p => !p.disabled).map(p => p.key),
+      platforms: platforms ?? ALL_PLATFORMS.filter(p => !p.disabled).map(p => p.key),
       stage: 'searching',
       stageMessage: '正在搜索...',
       results: [],
@@ -135,7 +174,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ planId = '', onAddToMa
     store.addEntry(planId, {
       id: placeholderId,
       query: query.trim(),
-      platforms: platforms ?? PLATFORMS.filter(p => !p.disabled).map(p => p.key),
+      platforms: platforms ?? ALL_PLATFORMS.filter(p => !p.disabled).map(p => p.key),
       results: [],
       resultCount: 0,
       searchedAt: new Date().toISOString(),
@@ -156,7 +195,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ planId = '', onAddToMa
       const res = await fetch('/api/search/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query.trim(), platforms }),
+        body: JSON.stringify({ query: query.trim(), platforms, planId }),
         signal: abortController.signal,
       })
 
@@ -323,32 +362,42 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ planId = '', onAddToMa
         )}
       </div>
 
-      {/* 平台选择 — 柔和化药丸/小卡片 */}
-      <div className="flex flex-wrap gap-2 pt-1 pb-2">
-          {PLATFORMS.map(p => {
-             const isSelected = selectedPlatforms.has(p.key)
-             return (
-              <button
-                key={p.key}
-                onClick={() => !p.disabled && togglePlatform(p.key)}
-                disabled={p.disabled}
-                aria-pressed={isSelected}
-                aria-label={p.label}
-                title={p.disabled ? (p.tooltip ?? p.label) : p.label}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] transition-all duration-50 ${
-                  p.disabled
-                    ? 'opacity-40 cursor-not-allowed bg-[#F8F9FA] text-[#9AA0A6] grayscale'
-                    : isSelected
-                    ? 'bg-[#FFF7ED] text-[#D97757] font-medium border border-[#F2DFD3]'
-                    : 'bg-[#F8F9FA] text-[#5F6368] border border-transparent hover:bg-[#F0F2F5]'
-                }`}
-              >
-                <PlatformIcon platform={p.key} size={14} />
-                {p.label}
-              </button>
-             )
-          })}
+      {/* 平台选择 — 按层级分组 */}
+      <div className="flex flex-col gap-2 pt-1 pb-2">
+        {PLATFORM_TIERS.map(tier => (
+          <div key={tier.tier} className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] text-[#9AA0A6] font-medium tracking-wide mr-1 min-w-[3.5em]">{tier.label}</span>
+            {tier.platforms.map(p => {
+              const isSelected = selectedPlatforms.has(p.key)
+              return (
+                <button
+                  key={p.key}
+                  onClick={() => !p.disabled && togglePlatform(p.key)}
+                  disabled={p.disabled}
+                  aria-pressed={isSelected}
+                  aria-label={p.label}
+                  title={p.disabled ? (p.tooltip ?? p.label) : p.label}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] transition-all duration-50 ${
+                    p.disabled
+                      ? 'opacity-40 cursor-not-allowed bg-[#F8F9FA] text-[#9AA0A6] grayscale'
+                      : isSelected
+                      ? 'bg-[#FFF7ED] text-[#D97757] font-medium border border-[#F2DFD3]'
+                      : 'bg-[#F8F9FA] text-[#5F6368] border border-transparent hover:bg-[#F0F2F5]'
+                  }`}
+                >
+                  <PlatformIcon platform={p.key} size={14} />
+                  {p.label}
+                </button>
+              )
+            })}
+          </div>
+        ))}
       </div>
+
+      {/* 未选平台提示 */}
+      {selectedPlatforms.size === 0 && (
+        <p className="text-[11px] text-[#9AA0A6] -mt-1">未选择平台时，将默认进行通用网页搜索</p>
+      )}
 
       {/* 搜索阶段进度 — 内联化 */}
       {isActive && (
@@ -397,9 +446,13 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ planId = '', onAddToMa
         </>
       )}
 
-      {results.length === 0 && !isSearching && !error && history.length === 0 && (
+      {results.length === 0 && !isSearching && !error && (
         <p className="text-xs text-[#9AA0A6] text-center py-2">
-          输入关键词搜索学习资源
+          {activeSearch?.stage === 'done'
+            ? '未找到相关结果，试试换个关键词或平台'
+            : history.length === 0
+            ? '输入关键词搜索学习资源'
+            : null}
         </p>
       )}
 

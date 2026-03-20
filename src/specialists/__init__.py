@@ -28,6 +28,7 @@
     bilibili_searcher.py    B站（httpx API 直连）
     zhihu_searcher.py       知乎（Playwright API 拦截）
     github_searcher.py      GitHub（REST API + README 抓取）
+    arxiv_searcher.py       arXiv（arxiv Python 包，学术论文）
 
   共享
     browser_models.py       内部数据模型（RawSearchResult / ScoredResult）
@@ -41,7 +42,11 @@
 """
 
 from .resource_searcher import ResourceSearcher
+from .arxiv_searcher import ArxivSearcher
+from .tavily_searcher import TavilySearcher
 
 __all__ = [
     "ResourceSearcher",
+    "ArxivSearcher",
+    "TavilySearcher",
 ]

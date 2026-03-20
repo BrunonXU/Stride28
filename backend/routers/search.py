@@ -7,6 +7,7 @@
 
 import asyncio
 import logging
+import os
 import uuid
 from typing import Any, Dict, List, Literal, Optional
 
@@ -18,7 +19,7 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["search"])
 
-VALID_PLATFORMS = {"bilibili", "youtube", "google", "github", "xiaohongshu", "zhihu"}
+VALID_PLATFORMS = {"bilibili", "youtube", "google", "github", "xiaohongshu", "zhihu", "arxiv", "tavily"}
 
 
 class SearchRequest(BaseModel):
@@ -32,7 +33,7 @@ class SearchResultItem(BaseModel):
     title: str
     url: str
     platform: str
-    type: str = ""          # 资源类型：article/question/video/repo 等
+    type: str = ""          # 资源类型：article/question/video/repo/paper 等
     description: str
     qualityScore: float
     contentSummary: str = ""
@@ -40,6 +41,13 @@ class SearchResultItem(BaseModel):
     imageUrls: List[str] = []
     topComments: List[str] = []
     contentText: str = ""
+    # 四层架构新增字段
+    sourceTier: str = ""
+    author: str = ""
+    publishTime: str = ""
+    fetchedAt: str = ""
+    extractionMode: str = ""
+    sourceMetadata: Dict[str, Any] = {}
 
 
 class SearchProgressEvent(BaseModel):
@@ -111,11 +119,28 @@ async def search_stream(body: SearchRequest, request: Request):
                 yield f"data: {evt.model_dump_json()}\n\n"
                 return
 
-            platforms = [p for p in (body.platforms or list(VALID_PLATFORMS)) if p in VALID_PLATFORMS]
-            if not platforms:
-                evt = SearchProgressEvent(stage="error", message="无有效搜索平台")
-                yield f"data: {evt.model_dump_json()}\n\n"
-                return
+            # ---- 平台决策 ----
+            if body.platforms:
+                # 用户显式选择
+                platforms = [p for p in body.platforms if p in VALID_PLATFORMS]
+                if not platforms:
+                    evt = SearchProgressEvent(stage="error", message="无有效搜索平台")
+                    yield f"data: {evt.model_dump_json()}\n\n"
+                    return
+                logger.info("Using user-selected platforms: %s", platforms)
+            else:
+                # 无选择 = Broad Web
+                tavily_key = os.environ.get("TAVILY_API_KEY")
+                if tavily_key:
+                    platforms = ["tavily"]
+                    logger.info("No platforms selected; defaulting to ['tavily']")
+                else:
+                    # Tavily 不可用，降级为所有已启用平台
+                    platforms = list(VALID_PLATFORMS)
+                    logger.info(
+                        "No platforms selected; Tavily unavailable, "
+                        "falling back to enabled platforms: %s", platforms
+                    )
 
             from src.specialists.search_orchestrator import SearchOrchestrator
             from src.providers.factory import ProviderFactory
@@ -169,6 +194,7 @@ async def search_stream(body: SearchRequest, request: Request):
                     platforms=platforms,
                     cancel_event=cancel_event,
                     learner_context=learner_context,
+                    plan_id=body.planId,
                 ):
                     if await request.is_disconnected():
                         cancel_event.set()
@@ -237,4 +263,11 @@ def _to_search_result_item(result_dict: dict) -> SearchResultItem:
         imageUrls=result_dict.get("image_urls", []),
         topComments=result_dict.get("comments_preview", []),
         contentText=result_dict.get("content_text", ""),
+        # 四层架构新增字段（snake_case → camelCase）
+        sourceTier=result_dict.get("source_tier", ""),
+        author=result_dict.get("author", ""),
+        publishTime=result_dict.get("publish_time", ""),
+        fetchedAt=result_dict.get("fetched_at", ""),
+        extractionMode=result_dict.get("extraction_mode", ""),
+        sourceMetadata=result_dict.get("source_metadata", {}),
     )

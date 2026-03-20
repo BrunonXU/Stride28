@@ -90,6 +90,23 @@ const OtherIcon: React.FC<{ size: number }> = ({ size }) => (
   </svg>
 )
 
+const ArxivIcon: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="24" height="24" rx="4" fill="#B31B1B"/>
+    <text x="12" y="17" textAnchor="middle" fill="white" fontSize="14" fontFamily="serif" fontStyle="italic">&#x3C7;</text>
+  </svg>
+)
+
+/** Tavily — 通用网页搜索，品牌蓝绿 #0EA5E9，地球+放大镜 */
+const TavilyIcon: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="11" cy="11" r="7" stroke="#0EA5E9" strokeWidth="2"/>
+    <line x1="2" y1="11" x2="20" y2="11" stroke="#0EA5E9" strokeWidth="1.5" opacity="0.5"/>
+    <path d="M11 4a10.5 10.5 0 0 1 2.5 7 10.5 10.5 0 0 1-2.5 7 10.5 10.5 0 0 1-2.5-7A10.5 10.5 0 0 1 11 4z" stroke="#0EA5E9" strokeWidth="1.5" opacity="0.5"/>
+    <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#0EA5E9" strokeWidth="2.5" strokeLinecap="round"/>
+  </svg>
+)
+
 /** 平台 → 图标子组件映射 */
 const ICON_MAP: Record<PlatformType, React.FC<{ size: number }>> = {
   bilibili: BilibiliIcon,
@@ -100,6 +117,8 @@ const ICON_MAP: Record<PlatformType, React.FC<{ size: number }>> = {
   xiaohongshu: XiaohongshuIcon,
   wechat: WeChatIcon,
   stackoverflow: StackOverflowIcon,
+  arxiv: ArxivIcon,
+  tavily: TavilyIcon,
   other: OtherIcon,
 }
 

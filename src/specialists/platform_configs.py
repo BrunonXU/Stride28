@@ -205,6 +205,38 @@ _zhihu_config = PlatformConfig(
     focused_search_count=40,
 )
 
+_arxiv_config = PlatformConfig(
+    name="arxiv",
+    search_url_template="",  # 不使用浏览器
+    result_selector="",
+    title_selector="",
+    link_selector="",
+    description_selector="",
+    resource_type="paper",
+    detail_selectors=DetailSelectors(),
+    use_api_search=True,
+    platform_category="paper",
+    scoring_weights={},  # arXiv 不走 EngagementRanker，无需加权
+    default_search_count=10,
+    focused_search_count=30,
+)
+
+_tavily_config = PlatformConfig(
+    name="tavily",
+    search_url_template="",  # 不使用浏览器
+    result_selector="",
+    title_selector="",
+    link_selector="",
+    description_selector="",
+    resource_type="article",
+    detail_selectors=DetailSelectors(),
+    use_api_search=True,
+    platform_category="article",
+    scoring_weights={},  # Tavily 绕过 EngagementRanker，无需加权
+    default_search_count=10,
+    focused_search_count=20,  # 免费额度有限，不宜太多
+)
+
 
 PLATFORM_CONFIGS: Dict[str, PlatformConfig] = {
     "xiaohongshu": _xiaohongshu_config,
@@ -215,4 +247,6 @@ PLATFORM_CONFIGS: Dict[str, PlatformConfig] = {
     "wechat": _wechat_config,
     "bilibili": _bilibili_config,
     "zhihu": _zhihu_config,
+    "arxiv": _arxiv_config,
+    "tavily": _tavily_config,
 }

@@ -143,7 +143,7 @@ cd frontend && npm run dev
 | `RERANKER_ENABLED` | — | Enable Cross-Encoder reranker; downloads ~2.3GB model on first run |
 | `GITHUB_TOKEN` | — | Increases GitHub search rate limit (10/min without token) |
 | `LANGSMITH_API_KEY` | — | LangSmith full-chain tracing |
-| `DEFAULT_PROVIDER` | — | Default `deepseek`; options: `openai` / `zhipu` / `moonshot` / `tongyi` |
+| `DEFAULT_PROVIDER` | — | Default `deepseek`; options: `openai` / `zhipu` / `tongyi` |
 
 See [`.env.example`](.env.example) for full configuration.
 
@@ -161,7 +161,8 @@ See [`.env.example`](.env.example) for full configuration.
                          │ REST API + SSE
 ┌────────────────────────┴────────────────────────────────┐
 │  FastAPI                                                 │
-│  plans / chat / studio / search / resource / upload      │
+│  plans / chat / studio / search / resource / upload /    │
+│  notes / dev / provider                                  │
 ├──────────────────────────────────────────────────────────┤
 │  agents/       TutorAgent + Episodic Memory              │
 │  providers/    OpenAI-compatible abstraction (4 vendors)  │
@@ -177,12 +178,11 @@ See [`.env.example`](.env.example) for full configuration.
 
 ## Roadmap
 
-**Done:** NotebookLM-style three-panel UI · 6-platform search aggregation · Two-stage quality funnel · Material-aware chat · SQLite persistence · Episodic Memory · Dynamic prompt assembly · Multi-provider support · LangSmith tracing · RAG layered injection · Cross-Encoder Reranker · Coverage-first context budget
+**Done:** NotebookLM-style three-panel UI · 6-platform search aggregation · Two-stage quality funnel · Material-aware chat · SQLite persistence · Episodic Memory · Dynamic prompt assembly · Multi-provider support · LangSmith tracing · RAG layered injection · Cross-Encoder Reranker · Coverage-first context budget · LangGraph Chat Orchestrator
 
 **In Progress / Planned:**
 - [ ] Dynamic prompt optimization for all 7 Studio tools
 - [ ] Progress ring UI component
-- [ ] LangGraph chat orchestrator
 - [ ] RAG evaluation pipeline (hit@k)
 - [ ] Multi-modal material understanding (PDF images + VL models)
 - [ ] Demo video & onboarding flow

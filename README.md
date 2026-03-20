@@ -142,7 +142,7 @@ cd frontend && npm run dev
 | `RERANKER_ENABLED` | — | 启用 Cross-Encoder reranker，首次启动下载 ~2.3GB 模型 |
 | `GITHUB_TOKEN` | — | 提升 GitHub 搜索速率（无 token 10次/分钟） |
 | `LANGSMITH_API_KEY` | — | LangSmith 全链路追踪 |
-| `DEFAULT_PROVIDER` | — | 默认 `deepseek`，可选 `openai` / `zhipu` / `moonshot` / `tongyi` |
+| `DEFAULT_PROVIDER` | — | 默认 `deepseek`，可选 `openai` / `zhipu` / `tongyi` |
 
 完整配置见 [`.env.example`](.env.example)。
 
@@ -160,7 +160,8 @@ cd frontend && npm run dev
                          │ REST API + SSE
 ┌────────────────────────┴────────────────────────────────┐
 │  FastAPI                                                 │
-│  plans / chat / studio / search / resource / upload      │
+│  plans / chat / studio / search / resource / upload /    │
+│  notes / dev / provider                                  │
 ├──────────────────────────────────────────────────────────┤
 │  agents/       TutorAgent + Episodic Memory              │
 │  providers/    OpenAI-compatible 抽象（4 家 LLM）         │
@@ -176,12 +177,11 @@ cd frontend && npm run dev
 
 ## 路线图
 
-**已完成：** NotebookLM 风格三栏 UI · 6 平台搜索聚合 · 两阶段质量漏斗 · 材料感知对话 · SQLite 持久化 · Episodic Memory · 动态 Prompt 组装 · 多 Provider 支持 · LangSmith 追踪 · RAG 分层注入 · Cross-Encoder Reranker · 覆盖优先 context budget
+**已完成：** NotebookLM 风格三栏 UI · 6 平台搜索聚合 · 两阶段质量漏斗 · 材料感知对话 · SQLite 持久化 · Episodic Memory · 动态 Prompt 组装 · 多 Provider 支持 · LangSmith 追踪 · RAG 分层注入 · Cross-Encoder Reranker · 覆盖优先 context budget · LangGraph Chat Orchestrator
 
 **进行中 / 计划：**
 - [ ] 7 种 Studio 工具的动态 prompt 优化
 - [ ] 进度环 UI 组件
-- [ ] LangGraph chat orchestrator
 - [ ] RAG 评估 pipeline（hit@k）
 - [ ] 多模态材料理解（PDF 图片 + VL 模型）
 - [ ] Demo 视频 & 引导流程

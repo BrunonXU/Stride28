@@ -123,6 +123,184 @@ class QualityAssessor:
             extracted_content="",
         )
 
+    async def assess_arxiv_batch(
+        self,
+        raw_results: List[RawSearchResult],
+        learner_context: Optional[LearnerContext] = None,
+    ) -> List[ScoredResult]:
+        """
+        arXiv 专用批量评估：跳过 EngagementRanker + PipelineExecutor，
+        直接用 abstract + 元数据做 LLM 评估。
+
+        输出：中文翻译摘要 + 个性化推荐 + quality_score (1-10)。
+        降级：LLM 失败时回退到 abstract 原文作为 content_summary，score=0（未评估）。
+        """
+        if not raw_results:
+            return []
+
+        if self._llm is not None:
+            try:
+                prompt = self._build_arxiv_prompt(raw_results, learner_context)
+                response = self._llm.simple_chat(
+                    prompt,
+                    system_prompt=(
+                        "你是一个学术论文评估专家，服务于一个智能学习规划平台。"
+                        "你的任务是帮助学习者快速理解英文论文的核心内容，"
+                        "用中文提供论文摘要和个性化学习建议。"
+                        "严格按照指定的 JSON 格式输出。"
+                    ),
+                )
+                results = self._parse_arxiv_response(response, raw_results)
+                if results is not None:
+                    logger.info(f"arXiv LLM 评估成功: {len(results)} 条")
+                    return results
+            except Exception as e:
+                logger.warning(f"arXiv LLM assessment failed: {e}")
+
+        # 降级：abstract 原文 + score=0（未评估）
+        logger.info("arXiv 评估降级: 使用原始 abstract")
+        return [
+            ScoredResult(
+                raw=r,
+                quality_score=0.0,
+                content_summary=r.content_snippet or "",
+                extracted_content=r.content_snippet or "",
+            )
+            for r in raw_results
+        ]
+
+    def _build_arxiv_prompt(
+        self,
+        raw_results: List[RawSearchResult],
+        learner_context: Optional[LearnerContext] = None,
+    ) -> str:
+        """构建 arXiv 专用评估 prompt。"""
+        # 学习者上下文
+        learner_block = ""
+        if learner_context:
+            parts = []
+            if learner_context.query:
+                parts.append(f"搜索关键词：「{learner_context.query}」")
+            profile_lines = []
+            if learner_context.goal:
+                profile_lines.append(f"- 学习目标：{learner_context.goal}")
+            if learner_context.level:
+                profile_lines.append(f"- 当前水平：{learner_context.level}")
+            if learner_context.background:
+                profile_lines.append(f"- 背景：{learner_context.background}")
+            if learner_context.daily_hours:
+                profile_lines.append(f"- 每日学习时间：{learner_context.daily_hours}小时")
+            if profile_lines:
+                parts.append("学习者画像：\n" + "\n".join(profile_lines))
+            if learner_context.plan_summary:
+                parts.append(f"当前学习规划：\n{learner_context.plan_summary}")
+            if parts:
+                learner_block = "\n\n".join(parts) + "\n\n"
+
+        # 论文条目
+        entries = []
+        for idx, r in enumerate(raw_results):
+            meta = r.source_metadata
+            authors = meta.get("authors", [])
+            authors_str = ", ".join(authors[:5])
+            if len(authors) > 5:
+                authors_str += f" 等 {len(authors)} 人"
+            categories = ", ".join(meta.get("categories", []))
+            published = meta.get("published", "")[:10]
+
+            entries.append(
+                f"### 论文 {idx + 1}\n"
+                f"- 标题: {r.title}\n"
+                f"- 作者: {authors_str}\n"
+                f"- 发表日期: {published}\n"
+                f"- 分类: {categories}\n"
+                f"- 摘要: {r.content_snippet}"
+            )
+
+        items_block = "\n\n".join(entries)
+
+        prompt = f"""请评估以下 {len(raw_results)} 篇 arXiv 论文，为中文学习者提供论文解读和学习建议。
+
+{learner_block}{items_block}
+
+请严格按以下 JSON 格式输出，不要输出其他内容：
+```json
+[
+  {{
+    "quality_score": 7.5,
+    "content_summary": "markdown 格式的论文解读（见下方要求）"
+  }}
+]
+```
+
+content_summary 要求（用中文撰写，markdown 格式）：
+## 论文解读
+- 用 2-3 段中文概括论文的研究问题、方法和核心贡献
+- 对**关键术语**首次出现时标注英文原文，如"**注意力机制**（Attention Mechanism）"
+- 提取论文的核心创新点和实验结论
+
+## 学习建议
+- 结合学习者画像（如有），说明这篇论文适合什么水平的读者
+- 建议阅读前需要哪些前置知识
+- 如果论文有配套代码仓库，提及其学习价值
+
+评分标准（quality_score 1-10）：
+- 与搜索关键词的相关性（权重最高）
+- 论文的学术影响力（作者、期刊/会议、引用趋势）
+- 对学习者当前水平的适配度（太难或太简单都应降分）
+- 实用性（是否有可复现的方法、开源代码）
+
+数组长度必须等于 {len(raw_results)}，顺序与论文一一对应。
+quality_score 范围 1-10，整数或一位小数。"""
+
+        return prompt
+
+    def _parse_arxiv_response(
+        self,
+        response: str,
+        raw_results: List[RawSearchResult],
+    ) -> Optional[List[ScoredResult]]:
+        """解析 arXiv 评估响应，复用 JSON 清洗逻辑。失败返回 None。"""
+        try:
+            clean = response.strip()
+            if clean.startswith("```"):
+                clean = re.sub(r"^```(?:json)?\s*", "", clean)
+                clean = re.sub(r"\s*```$", "", clean)
+
+            arr_match = re.search(r"\[[\s\S]*\]", clean)
+            json_str = arr_match.group() if arr_match else clean
+
+            try:
+                data = json.loads(json_str)
+            except json.JSONDecodeError:
+                sanitized = self._sanitize_json(json_str)
+                data = json.loads(sanitized)
+                logger.info("arXiv JSON sanitize 修复成功")
+
+            if not isinstance(data, list) or len(data) != len(raw_results):
+                logger.warning(
+                    f"arXiv response length mismatch: "
+                    f"expected {len(raw_results)}, got {len(data) if isinstance(data, list) else 'non-list'}"
+                )
+                return None
+
+            results = []
+            for idx, r in enumerate(raw_results):
+                entry = data[idx] if isinstance(data[idx], dict) else {}
+                score = max(1.0, min(10.0, float(entry.get("quality_score", 5.0))))
+                summary = str(entry.get("content_summary", ""))
+                results.append(ScoredResult(
+                    raw=r,
+                    quality_score=score,
+                    content_summary=summary,
+                    extracted_content=r.content_snippet or "",
+                ))
+            return results
+
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
+            logger.warning(f"Failed to parse arXiv LLM response: {e}")
+            return None
+
     # ------------------------------------------------------------------
     # Prompt 构建
     # ------------------------------------------------------------------

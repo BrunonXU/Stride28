@@ -57,6 +57,14 @@ class SearchResult(BaseModel):
     image_urls: List[str] = Field(default_factory=list)  # 图片 URL 列表
     content_text: str = ""  # 正文原文（用于加入素材后的完整阅读）
 
+    # 四层架构新增字段（全部可选，默认空值）
+    source_tier: str = ""
+    author: str = ""
+    publish_time: str = ""
+    fetched_at: str = ""
+    extraction_mode: str = ""
+    source_metadata: Dict[str, Any] = Field(default_factory=dict)
+
     def to_dict(self) -> dict:
         """序列化为字典"""
         return self.model_dump()

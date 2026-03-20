@@ -1,6 +1,6 @@
 // 全局 TypeScript 类型定义
 
-export type PlatformType = 'bilibili' | 'youtube' | 'google' | 'github' | 'xiaohongshu' | 'zhihu' | 'wechat' | 'stackoverflow' | 'other';
+export type PlatformType = 'bilibili' | 'youtube' | 'google' | 'github' | 'xiaohongshu' | 'zhihu' | 'wechat' | 'stackoverflow' | 'arxiv' | 'tavily' | 'other';
 
 export interface Material {
   id: string;
@@ -26,6 +26,13 @@ export interface SearchResult {
   imageUrls?: string[];                 // 图片 URL 列表
   topComments?: string[];               // 高赞评论文本列表
   contentText?: string;                  // 正文原文
+  // 四层架构新增字段
+  sourceTier?: string;                   // 所属层级：broad_web / community / developer / academic
+  author?: string;                       // 作者
+  publishTime?: string;                  // 发表时间（ISO 8601）
+  fetchedAt?: string;                    // 抓取时间
+  extractionMode?: string;               // 提取方式
+  sourceMetadata?: Record<string, any>;  // 平台特有元数据
 }
 
 export interface ChatMessage {
