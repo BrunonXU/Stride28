@@ -3,7 +3,7 @@
     "id": "s01",
     "query": "Python 异步编程入门教程",
     "category": "community",
-    "platforms": ["bilibili", "xiaohongshu", "tavily"],
+    "platforms": ["bilibili", "tavily"],
     "plan_context": {
       "domain": "Python",
       "goal": "掌握 asyncio 并发编程",
@@ -88,7 +88,7 @@
     "id": "s06",
     "query": "机器学习特征工程最佳实践",
     "category": "community",
-    "platforms": ["xiaohongshu", "bilibili", "tavily"],
+    "platforms": ["bilibili", "tavily"],
     "plan_context": {
       "domain": "Machine Learning",
       "goal": "掌握特征工程核心技巧",
