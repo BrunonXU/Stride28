@@ -382,6 +382,26 @@ async def get_material_content(material_id: str, plan_id: str = ""):
     if mat.get("status") != "ready":
         return {"id": material_id, "content": "", "fileType": "text", "error": "材料尚未处理完成"}
 
+    # 搜索来源材料没有磁盘文件，从 extraData 拼接内容
+    extra = mat.get("extraData") or {}
+    if extra:
+        parts = []
+        content_text = extra.get("contentText") or ""
+        if content_text:
+            parts.append(content_text)
+        summary = extra.get("contentSummary") or ""
+        if summary and summary != content_text:
+            parts.append(f"**摘要：** {summary}")
+        key_points = extra.get("keyPoints") or []
+        if key_points:
+            parts.append("**核心观点：**\n" + "\n".join(f"- {p}" for p in key_points))
+        description = extra.get("description") or ""
+        if description and description != content_text and description != summary:
+            parts.append(description)
+        assembled = "\n\n".join(parts).strip()
+        if assembled:
+            return {"id": material_id, "content": assembled, "fileType": "markdown"}
+
     return {"id": material_id, "content": "", "fileType": "text", "error": "文件未找到"}
 
 

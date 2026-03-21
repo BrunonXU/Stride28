@@ -46,6 +46,16 @@ export const SourcePanel: React.FC<SourcePanelProps> = ({
   const [searchCheckedCount, setSearchCheckedCount] = useState(0)
   const [searchTriggerAdd, setSearchTriggerAdd] = useState<(() => void) | null>(null)
   const { materials, removeMaterial, addMaterial } = useSourceStore()
+  const pendingPreview = useSourceStore(s => s.pendingPreview)
+
+  // 聊天区搜索结果点击 → 打开 PreviewPopup
+  useEffect(() => {
+    if (pendingPreview) {
+      setPreviewResult(pendingPreview)
+      onReadingChange?.(true)
+      useSourceStore.getState().setPendingPreview(null)
+    }
+  }, [pendingPreview]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const tempMats = materials.filter(m => m.id.startsWith('temp-'))

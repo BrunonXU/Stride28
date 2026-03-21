@@ -26,6 +26,9 @@ export interface SearchResult {
   imageUrls?: string[];                 // 图片 URL 列表
   topComments?: string[];               // 高赞评论文本列表
   contentText?: string;                  // 正文原文
+  recommendationReason?: string;         // 推荐理由
+  keyPoints?: string[];                  // 核心观点
+  commentSummary?: string;               // 评论结论摘要
   // 四层架构新增字段
   sourceTier?: string;                   // 所属层级：broad_web / community / developer / academic
   author?: string;                       // 作者
@@ -70,6 +73,16 @@ export interface InlineSearchResult {
   recommendationReason?: string;
   /** 核心观点 */
   keyPoints?: string[];
+  /** 来源层级：broad_web / community / developer / academic */
+  sourceTier?: string;
+  /** 作者 */
+  author?: string;
+  /** 发表时间 */
+  publishTime?: string;
+  /** 提取方式 */
+  extractionMode?: string;
+  /** 平台特有元数据（含 trace） */
+  sourceMetadata?: Record<string, any>;
 }
 
 export interface CitationSource {

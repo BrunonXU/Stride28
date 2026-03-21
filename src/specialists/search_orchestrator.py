@@ -162,14 +162,18 @@ class SearchOrchestrator:
         self._cache = SearchCache(ttl=cache_ttl)
         self._browser_agent = BrowserAgent()
         self._quality_scorer = QualityScorer(llm_provider=llm_provider)
+        # API 级缓存（模块级单例，跨请求复用）
+        from src.specialists.api_cache import APICache
+        self._api_cache = APICache.get_instance()
         self._bilibili_searcher = BiliBiliSearcher()
         self._xhs_searcher = XhsSearcher()
         self._zhihu_searcher = ZhihuSearcher()
         self._github_searcher = GithubSearcher(
             github_token=os.environ.get("GITHUB_TOKEN"),
+            api_cache=self._api_cache,
         )
-        self._arxiv_searcher = ArxivSearcher()
-        self._tavily_searcher = TavilySearcher()
+        self._arxiv_searcher = ArxivSearcher(api_cache=self._api_cache)
+        self._tavily_searcher = TavilySearcher(api_cache=self._api_cache)
         # 搜索体验重设计：两阶段漏斗筛选 + 流水线执行
         self._engagement_ranker = EngagementRanker()
         self._quality_assessor = QualityAssessor(llm_provider=llm_provider)
@@ -686,6 +690,11 @@ class SearchOrchestrator:
         elif raw.comments:
             comments_preview = [c[:200] for c in raw.comments[:5]]
 
+        # 合并 trace 到 source_metadata.trace（与 source metadata 本体分离）
+        sm = dict(raw.source_metadata) if raw.source_metadata else {}
+        if scored.trace:
+            sm["trace"] = scored.trace
+
         return SearchResult(
             title=raw.title,
             url=raw.url,
@@ -707,7 +716,7 @@ class SearchOrchestrator:
             publish_time=raw.publish_time,
             fetched_at=raw.fetched_at,
             extraction_mode=raw.extraction_mode,
-            source_metadata=dict(raw.source_metadata) if raw.source_metadata else {},
+            source_metadata=sm,
         )
 
     async def _rewrite_query(

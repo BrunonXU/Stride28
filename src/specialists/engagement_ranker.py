@@ -55,7 +55,11 @@ class EngagementRanker:
         if not results:
             return []
 
-        scored = sorted(results, key=lambda r: self._engagement_score(r), reverse=True)
+        # 写入临时 _engagement_score 字段，供 PipelineExecutor 读取后写入 trace
+        for r in results:
+            r.engagement_metrics["_engagement_score"] = self._engagement_score(r)
+
+        scored = sorted(results, key=lambda r: r.engagement_metrics.get("_engagement_score", 0), reverse=True)
 
         if len(scored) < 20:
             return scored

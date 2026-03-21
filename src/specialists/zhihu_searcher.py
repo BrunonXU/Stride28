@@ -20,6 +20,7 @@
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone
 import re
 import shutil
 from pathlib import Path
@@ -756,6 +757,12 @@ class ZhihuSearcher:
                 description=item.get("description", ""),
                 content_snippet=item.get("content_snippet", ""),
                 engagement_metrics=metrics,
+                # 四层 metadata
+                source_tier="community",
+                author=item.get("author", ""),
+                publish_time="",  # 知乎搜索 API 不返回发布时间
+                fetched_at=datetime.now(timezone.utc).isoformat(),
+                extraction_mode="zhihu_browser_intercept",
             )
         except Exception as e:
             logger.warning(f"构建知乎结果失败: {e}")
@@ -783,6 +790,9 @@ class ZhihuSearcher:
                 resource_type="article",
                 description="点击链接在知乎查看更多搜索结果",
                 engagement_metrics={},
+                source_tier="community",
+                fetched_at=datetime.now(timezone.utc).isoformat(),
+                extraction_mode="zhihu_fallback_link",
             )
         ]
 

@@ -10,6 +10,8 @@ interface SourceStore {
   isSearching: boolean
   searchQuery: string
   loading: boolean
+  /** 聊天区搜索结果点击时，跨组件通知 SourcePanel 打开 PreviewPopup */
+  pendingPreview: SearchResult | null
 
   loadMaterials: (planId: string) => Promise<void>
   addMaterial: (m: Material) => void
@@ -23,6 +25,7 @@ interface SourceStore {
   setSearching: (v: boolean) => void
   setSearchQuery: (q: string) => void
   clearSearch: () => void
+  setPendingPreview: (result: SearchResult | null) => void
 }
 
 const DEFAULT_PLATFORM_STATUS: Record<PlatformType, PlatformStatus> = {
@@ -34,6 +37,8 @@ const DEFAULT_PLATFORM_STATUS: Record<PlatformType, PlatformStatus> = {
   google: 'idle',
   wechat: 'idle',
   stackoverflow: 'idle',
+  arxiv: 'idle',
+  tavily: 'idle',
   other: 'idle',
 }
 
@@ -44,6 +49,7 @@ export const useSourceStore = create<SourceStore>()((set) => ({
   isSearching: false,
   searchQuery: '',
   loading: false,
+  pendingPreview: null,
 
   loadMaterials: async (planId: string) => {
     set({ loading: true })
@@ -133,4 +139,6 @@ export const useSourceStore = create<SourceStore>()((set) => ({
       isSearching: false,
       searchQuery: '',
     }),
+
+  setPendingPreview: (result) => set({ pendingPreview: result }),
 }))

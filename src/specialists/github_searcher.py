@@ -12,6 +12,7 @@ API 失败时回退到构造 GitHub 搜索链接作为降级结果。
 
 import logging
 import re
+from datetime import datetime, timezone
 from typing import List, Optional
 from urllib.parse import quote
 
@@ -37,15 +38,17 @@ class GithubSearcher:
         "X-GitHub-Api-Version": "2022-11-28",
     }
 
-    def __init__(self, github_token: Optional[str] = None):
+    def __init__(self, github_token: Optional[str] = None, api_cache=None):
         """
         初始化 GithubSearcher。
 
         Args:
             github_token: GitHub Personal Access Token（可选）。
                           无 token 时 API 限制 10 次/分钟，有 token 30 次/分钟。
+            api_cache: APICache 实例（可选），用于缓存 API 响应。
         """
         self._token = github_token
+        self._api_cache = api_cache
         if github_token:
             self.HEADERS["Authorization"] = f"Bearer {github_token}"
 
@@ -60,9 +63,20 @@ class GithubSearcher:
             RawSearchResult 列表，失败时返回降级搜索链接
         """
         try:
-            results = await self._search_api(query, limit)
+            # Search API 缓存
+            if self._api_cache:
+                cached = self._api_cache.get("github_search", query=query, limit=limit)
+                if cached is not None:
+                    logger.debug(f"GitHub Search 缓存命中: query={query[:30]}")
+                    results = cached
+                else:
+                    results = await self._search_api(query, limit)
+                    if results and self._api_cache:
+                        self._api_cache.set("github_search", results, query=query, limit=limit)
+            else:
+                results = await self._search_api(query, limit)
+
             if results:
-                # 并发抓取 README，填充 content_snippet
                 results = await self._enrich_with_readme(results)
                 logger.info(f"GitHub API 搜索成功: {len(results)} 条结果")
                 return results
@@ -117,12 +131,20 @@ class GithubSearcher:
         import asyncio
 
         async def _fetch_readme(result: RawSearchResult) -> None:
-            """抓取单个仓库的 README。"""
+            """抓取单个仓库的 README（带 APICache）。"""
             owner_repo = self._extract_owner_repo(result.url)
             if not owner_repo:
                 return
 
             owner, repo = owner_repo
+
+            # README 缓存
+            if self._api_cache:
+                cached = self._api_cache.get("github_readme", owner=owner, repo=repo)
+                if cached is not None:
+                    result.content_snippet = cached
+                    return
+
             readme_url = self.README_RAW_URL.format(owner=owner, repo=repo)
 
             try:
@@ -130,10 +152,11 @@ class GithubSearcher:
                     resp = await client.get(readme_url, headers=self.HEADERS)
                     if resp.status_code == 200:
                         readme_text = resp.text
-                        # 清理 HTML/Markdown 噪音，提取纯文本
                         cleaned = self._clean_readme(readme_text)
-                        # 截取前 3000 字符，够 LLM 评估用
                         result.content_snippet = cleaned[:3000]
+                        # 写入缓存
+                        if self._api_cache:
+                            self._api_cache.set("github_readme", result.content_snippet, owner=owner, repo=repo)
                     else:
                         logger.debug(f"README 获取失败 ({resp.status_code}): {owner}/{repo}")
             except Exception as e:
@@ -201,6 +224,18 @@ class GithubSearcher:
                     "watchers": watchers,
                     "language": language,
                     "updated_at": updated_at,
+                },
+                # 四层 metadata
+                source_tier="developer",
+                author=item.get("owner", {}).get("login", ""),
+                publish_time=item.get("created_at", ""),
+                fetched_at=datetime.now(timezone.utc).isoformat(),
+                extraction_mode="github_api",
+                source_metadata={
+                    "language": language,
+                    "topics": topics[:5],
+                    "license": license_name,
+                    "default_branch": item.get("default_branch", ""),
                 },
             )
         except Exception as e:
@@ -276,6 +311,9 @@ class GithubSearcher:
                 resource_type="repo",
                 description="点击链接在 GitHub 查看更多搜索结果",
                 engagement_metrics={},
+                source_tier="developer",
+                fetched_at=datetime.now(timezone.utc).isoformat(),
+                extraction_mode="github_fallback_link",
             )
         ]
 

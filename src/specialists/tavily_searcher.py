@@ -32,10 +32,11 @@ class TavilySearcher:
     DEFAULT_LIMIT = 10
     EXTRACT_TOP_N = 5  # 对 top 5 结果做 /extract，平衡质量和 credit 消耗
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, api_cache=None):
         """初始化，api_key 从参数或 TAVILY_API_KEY 环境变量获取。"""
         self._api_key = api_key or os.environ.get("TAVILY_API_KEY")
         self._client = None  # 延迟初始化
+        self._api_cache = api_cache
 
     def is_available(self) -> bool:
         """检查 API Key 是否已配置。"""
@@ -64,9 +65,19 @@ class TavilySearcher:
             logger.warning(f"Tavily client 初始化失败: {e}")
             return []
 
-        # 第一段：/search
+        # 第一段：/search（带缓存）
         try:
-            search_results = await self._do_search(query, limit)
+            if self._api_cache:
+                cached = self._api_cache.get("tavily_search", query=query, limit=limit)
+                if cached is not None:
+                    search_results = cached
+                    logger.debug(f"Tavily /search 缓存命中: query={query[:30]}")
+                else:
+                    search_results = await self._do_search(query, limit)
+                    if search_results:
+                        self._api_cache.set("tavily_search", search_results, query=query, limit=limit)
+            else:
+                search_results = await self._do_search(query, limit)
         except Exception as e:
             logger.warning(f"Tavily /search 失败: {e}")
             return []
@@ -81,10 +92,25 @@ class TavilySearcher:
         ]
         extracted: Dict[str, str] = {}
         if urls_to_extract:
-            try:
-                extracted = await self._do_extract(urls_to_extract)
-            except Exception as e:
-                logger.warning(f"Tavily /extract 失败，降级使用 snippet: {e}")
+            # /extract 缓存：key 包含排序后的 URL 列表
+            urls_key = ",".join(sorted(urls_to_extract))
+            if self._api_cache:
+                cached_ext = self._api_cache.get("tavily_extract", urls=urls_key)
+                if cached_ext is not None:
+                    extracted = cached_ext
+                    logger.debug(f"Tavily /extract 缓存命中: {len(urls_to_extract)} URLs")
+                else:
+                    try:
+                        extracted = await self._do_extract(urls_to_extract)
+                        if extracted:
+                            self._api_cache.set("tavily_extract", extracted, urls=urls_key)
+                    except Exception as e:
+                        logger.warning(f"Tavily /extract 失败，降级使用 snippet: {e}")
+            else:
+                try:
+                    extracted = await self._do_extract(urls_to_extract)
+                except Exception as e:
+                    logger.warning(f"Tavily /extract 失败，降级使用 snippet: {e}")
 
         # 组装结果
         results = []

@@ -8,6 +8,7 @@ API 失败时回退到构造 B站搜索链接作为降级结果。
 """
 
 import logging
+from datetime import datetime, timezone
 from typing import List, Optional
 from urllib.parse import quote
 
@@ -124,6 +125,12 @@ class BiliBiliSearcher:
                     "likes": likes,
                     "play": play_count,  # 兼容字段
                 },
+                # 四层 metadata
+                source_tier="community",
+                author=item.get("author", ""),
+                publish_time=str(item.get("pubdate", "")),
+                fetched_at=datetime.now(timezone.utc).isoformat(),
+                extraction_mode="bilibili_api",
             )
         except Exception as e:
             logger.debug(f"解析 B站视频项失败: {e}")
@@ -158,5 +165,8 @@ class BiliBiliSearcher:
                 resource_type="video",
                 description="点击链接在 B站 查看更多搜索结果",
                 engagement_metrics={},
+                source_tier="community",
+                fetched_at=datetime.now(timezone.utc).isoformat(),
+                extraction_mode="bilibili_fallback_link",
             )
         ]

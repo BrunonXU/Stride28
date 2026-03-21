@@ -15,6 +15,7 @@ import os
 import random
 import sys
 import time
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -598,6 +599,12 @@ class XhsSearcher:
                 top_comments=top_comments[:10],
                 image_urls=imgs[:9],
                 deduplicated_comment_count=len(set(texts)),
+                # 四层 metadata
+                source_tier="community",
+                author=detail.get("user", {}).get("nickname", ""),
+                publish_time="",  # 小红书 API 不直接返回发布时间
+                fetched_at=datetime.now(timezone.utc).isoformat(),
+                extraction_mode="xhs_api",
             )
         except Exception as e:
             logger.warning(f"构建结果失败: {e}")

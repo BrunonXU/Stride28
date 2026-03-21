@@ -28,6 +28,9 @@ class ArxivSearcher:
     DEFAULT_LIMIT = 10
     MAX_RESULTS_CAP = 15  # arXiv API 请求上限，避免大量结果导致超时
 
+    def __init__(self, api_cache=None):
+        self._api_cache = api_cache
+
     async def search(self, query: str, limit: int = 10) -> List[RawSearchResult]:
         """搜索 arXiv 论文，返回 RawSearchResult 列表。
 
@@ -37,6 +40,14 @@ class ArxivSearcher:
         """
         # arXiv API 请求量大时非常慢，限制上限
         effective_limit = min(limit, self.MAX_RESULTS_CAP)
+
+        # APICache 查询
+        if self._api_cache:
+            cached = self._api_cache.get("arxiv_search", query=query, limit=effective_limit)
+            if cached is not None:
+                logger.debug(f"arXiv 缓存命中: query={query[:30]}")
+                return cached
+
         try:
             import arxiv
 
@@ -47,6 +58,9 @@ class ArxivSearcher:
             )
             if results:
                 logger.info(f"arXiv 搜索成功: {len(results)} 条结果")
+                # 写入缓存
+                if self._api_cache:
+                    self._api_cache.set("arxiv_search", results, query=query, limit=effective_limit)
             return results
         except asyncio.TimeoutError:
             logger.warning(f"arXiv 搜索超时 ({self.TIMEOUT}s): {query}")

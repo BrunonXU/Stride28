@@ -286,22 +286,33 @@ class PipelineExecutor:
         if not batch:
             return
 
+        batch_results: List[ScoredResult] = []
         try:
             scored = await self._quality_assessor.assess_batch(batch, self._learner_context)
-            results.extend(scored)
+            batch_results.extend(scored)
         except Exception as e:
             logger.warning(f"批量评估失败，使用降级评估: {e}")
             # Fallback: assess each item individually
             for raw, content, comments in batch:
                 try:
                     fallback = await self._quality_assessor.assess_single_fallback(raw)
-                    results.append(fallback)
+                    batch_results.append(fallback)
                 except Exception as inner_e:
                     logger.warning(f"降级评估也失败: {inner_e}")
                     # Last resort: create a minimal scored result
-                    results.append(ScoredResult(
+                    batch_results.append(ScoredResult(
                         raw=raw,
                         quality_score=1.0,
                         content_summary="",
                         extracted_content=content,
+                        trace={"assessment_method": "heuristic"},
                     ))
+
+        # trace 合并：从 engagement_metrics 中 pop _engagement_score（防止泄漏到前端）
+        for scored in batch_results:
+            eng_score = scored.raw.engagement_metrics.pop("_engagement_score", None)
+            if eng_score is not None:
+                scored.trace["engagement_score"] = eng_score
+            scored.trace.setdefault("extraction_had_content", bool(scored.extracted_content))
+
+        results.extend(batch_results)

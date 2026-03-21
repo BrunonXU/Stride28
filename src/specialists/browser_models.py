@@ -59,4 +59,6 @@ class ScoredResult(BaseModel):
     # AI 内容整理（markdown 格式，含整体评价 + 各回答摘要）
     content_summary: str = ""
     extracted_content: str = ""       # 提取的正文内容（用于缓存）
+    # P0 新增：pipeline 处理追踪
+    trace: Dict[str, Any] = Field(default_factory=dict)
 

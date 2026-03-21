@@ -416,6 +416,12 @@ class ChatOrchestrator:
                             "engagementMetrics": r.get("engagement_metrics", {}),
                             "recommendationReason": r.get("recommendation_reason", ""),
                             "keyPoints": r.get("key_points", []),
+                            # 四层 metadata 透传
+                            "sourceTier": r.get("source_tier", ""),
+                            "author": r.get("author", ""),
+                            "publishTime": r.get("publish_time", ""),
+                            "extractionMode": r.get("extraction_mode", ""),
+                            "sourceMetadata": r.get("source_metadata", {}),
                         }
                         for r in raw_results
                     ]

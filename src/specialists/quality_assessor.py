@@ -121,6 +121,7 @@ class QualityAssessor:
             quality_score=assessment.quality_score,
             content_summary=assessment.content_summary,
             extracted_content="",
+            trace={"assessment_method": "llm_single"},
         )
 
     async def assess_arxiv_batch(
@@ -165,6 +166,7 @@ class QualityAssessor:
                 quality_score=0.0,
                 content_summary=r.content_snippet or "",
                 extracted_content=r.content_snippet or "",
+                trace={"assessment_method": "heuristic"},
             )
             for r in raw_results
         ]
@@ -294,6 +296,7 @@ quality_score 范围 1-10，整数或一位小数。"""
                     quality_score=score,
                     content_summary=summary,
                     extracted_content=r.content_snippet or "",
+                    trace={"assessment_method": "llm_batch"},
                 ))
             return results
 
@@ -594,6 +597,7 @@ quality_score 范围 1-10，整数或一位小数。"""
                     quality_score=score,
                     content_summary=summary,
                     extracted_content=content,
+                    trace={"assessment_method": "llm_batch"},
                 ))
 
             return results
@@ -634,6 +638,7 @@ quality_score 范围 1-10，整数或一位小数。"""
                 quality_score=score,
                 content_summary="",
                 extracted_content=content,
+                trace={"assessment_method": "heuristic"},
             ))
         return results
 
