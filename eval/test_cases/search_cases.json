@@ -3,7 +3,10 @@
     "id": "s01",
     "query": "Python 异步编程入门教程",
     "category": "community",
-    "platforms": ["bilibili", "tavily"],
+    "platforms": [
+      "zhihu",
+      "tavily"
+    ],
     "plan_context": {
       "domain": "Python",
       "goal": "掌握 asyncio 并发编程",
@@ -11,16 +14,32 @@
     },
     "expected_signals": {
       "min_results": 3,
-      "preferred_tiers": ["community", "broad_web"],
-      "title_keywords": ["异步", "async", "asyncio", "协程", "并发"],
-      "reject_keywords": ["广告", "引流", "加微信"]
+      "preferred_tiers": [
+        "community",
+        "broad_web"
+      ],
+      "title_keywords": [
+        "异步",
+        "async",
+        "asyncio",
+        "协程",
+        "并发"
+      ],
+      "reject_keywords": [
+        "广告",
+        "引流",
+        "加微信"
+      ]
     }
   },
   {
     "id": "s02",
     "query": "transformer attention mechanism explained",
     "category": "academic",
-    "platforms": ["arxiv", "tavily"],
+    "platforms": [
+      "arxiv",
+      "tavily"
+    ],
     "plan_context": {
       "domain": "Deep Learning",
       "goal": "理解 Transformer 架构原理",
@@ -28,8 +47,16 @@
     },
     "expected_signals": {
       "min_results": 2,
-      "preferred_tiers": ["academic", "broad_web"],
-      "title_keywords": ["transformer", "attention", "self-attention", "mechanism"],
+      "preferred_tiers": [
+        "academic",
+        "broad_web"
+      ],
+      "title_keywords": [
+        "transformer",
+        "attention",
+        "self-attention",
+        "mechanism"
+      ],
       "reject_keywords": []
     }
   },
@@ -37,7 +64,10 @@
     "id": "s03",
     "query": "React 状态管理 Zustand vs Redux",
     "category": "broad_web",
-    "platforms": ["tavily", "github"],
+    "platforms": [
+      "tavily",
+      "github"
+    ],
     "plan_context": {
       "domain": "React",
       "goal": "选择合适的状态管理方案",
@@ -45,8 +75,16 @@
     },
     "expected_signals": {
       "min_results": 3,
-      "preferred_tiers": ["broad_web", "developer"],
-      "title_keywords": ["zustand", "redux", "状态管理", "state"],
+      "preferred_tiers": [
+        "broad_web",
+        "developer"
+      ],
+      "title_keywords": [
+        "zustand",
+        "redux",
+        "状态管理",
+        "state"
+      ],
       "reject_keywords": []
     }
   },
@@ -54,7 +92,11 @@
     "id": "s04",
     "query": "LangChain RAG 实战项目",
     "category": "mixed",
-    "platforms": ["github", "bilibili", "tavily"],
+    "platforms": [
+      "github",
+      "zhihu",
+      "tavily"
+    ],
     "plan_context": {
       "domain": "LLM Application",
       "goal": "用 LangChain 构建 RAG 应用",
@@ -62,8 +104,17 @@
     },
     "expected_signals": {
       "min_results": 3,
-      "preferred_tiers": ["developer", "community", "broad_web"],
-      "title_keywords": ["langchain", "rag", "retrieval", "检索"],
+      "preferred_tiers": [
+        "developer",
+        "community",
+        "broad_web"
+      ],
+      "title_keywords": [
+        "langchain",
+        "rag",
+        "retrieval",
+        "检索"
+      ],
       "reject_keywords": []
     }
   },
@@ -71,7 +122,10 @@
     "id": "s05",
     "query": "Docker 容器化部署 FastAPI",
     "category": "broad_web",
-    "platforms": ["tavily", "github"],
+    "platforms": [
+      "tavily",
+      "github"
+    ],
     "plan_context": {
       "domain": "DevOps",
       "goal": "学会用 Docker 部署 Python Web 应用",
@@ -79,8 +133,17 @@
     },
     "expected_signals": {
       "min_results": 2,
-      "preferred_tiers": ["broad_web", "developer"],
-      "title_keywords": ["docker", "fastapi", "容器", "部署", "deploy"],
+      "preferred_tiers": [
+        "broad_web",
+        "developer"
+      ],
+      "title_keywords": [
+        "docker",
+        "fastapi",
+        "容器",
+        "部署",
+        "deploy"
+      ],
       "reject_keywords": []
     }
   },
@@ -88,7 +151,10 @@
     "id": "s06",
     "query": "机器学习特征工程最佳实践",
     "category": "community",
-    "platforms": ["bilibili", "tavily"],
+    "platforms": [
+      "zhihu",
+      "tavily"
+    ],
     "plan_context": {
       "domain": "Machine Learning",
       "goal": "掌握特征工程核心技巧",
@@ -96,16 +162,29 @@
     },
     "expected_signals": {
       "min_results": 3,
-      "preferred_tiers": ["community", "broad_web"],
-      "title_keywords": ["特征工程", "feature", "机器学习", "数据处理"],
-      "reject_keywords": ["广告"]
+      "preferred_tiers": [
+        "community",
+        "broad_web"
+      ],
+      "title_keywords": [
+        "特征工程",
+        "feature",
+        "机器学习",
+        "数据处理"
+      ],
+      "reject_keywords": [
+        "广告"
+      ]
     }
   },
   {
     "id": "s07",
     "query": "reinforcement learning from human feedback RLHF",
     "category": "academic",
-    "platforms": ["arxiv", "tavily"],
+    "platforms": [
+      "arxiv",
+      "tavily"
+    ],
     "plan_context": {
       "domain": "AI Alignment",
       "goal": "理解 RLHF 训练流程",
@@ -113,8 +192,16 @@
     },
     "expected_signals": {
       "min_results": 2,
-      "preferred_tiers": ["academic", "broad_web"],
-      "title_keywords": ["rlhf", "reinforcement", "human feedback", "alignment"],
+      "preferred_tiers": [
+        "academic",
+        "broad_web"
+      ],
+      "title_keywords": [
+        "rlhf",
+        "reinforcement",
+        "human feedback",
+        "alignment"
+      ],
       "reject_keywords": []
     }
   },
@@ -122,7 +209,11 @@
     "id": "s08",
     "query": "Go 语言并发模型 goroutine channel",
     "category": "mixed",
-    "platforms": ["tavily", "github", "bilibili"],
+    "platforms": [
+      "tavily",
+      "github",
+      "zhihu"
+    ],
     "plan_context": {
       "domain": "Go",
       "goal": "掌握 Go 并发编程模型",
@@ -130,8 +221,18 @@
     },
     "expected_signals": {
       "min_results": 3,
-      "preferred_tiers": ["broad_web", "developer", "community"],
-      "title_keywords": ["goroutine", "channel", "并发", "go", "concurrency"],
+      "preferred_tiers": [
+        "broad_web",
+        "developer",
+        "community"
+      ],
+      "title_keywords": [
+        "goroutine",
+        "channel",
+        "并发",
+        "go",
+        "concurrency"
+      ],
       "reject_keywords": []
     }
   }
