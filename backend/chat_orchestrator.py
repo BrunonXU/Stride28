@@ -17,6 +17,7 @@ ChatOrchestrator — 基于 LangGraph StateGraph 的聊天编排器
 import asyncio
 import json
 import logging
+import os
 from typing import List, Optional, TYPE_CHECKING
 
 from langgraph.graph import StateGraph, END
@@ -346,7 +347,12 @@ class ChatOrchestrator:
             logger.warning(f"关键词提取失败，使用原始消息: {e}")
             search_query = state["user_message"][:50]
 
-        # 2. 确定搜索平台：优先使用用户指定的平台，否则全平台
+        # 2. 构建学习者上下文（与侧边栏搜索对齐）
+        plan_id = state.get("plan_id")
+        from backend.search_utils import build_learner_context
+        learner_context = build_learner_context(plan_id, search_query)
+
+        # 3. 确定搜索平台：优先使用用户指定的平台，否则默认 Tavily（与侧边栏一致）
         target_platforms = state.get("target_platforms")
         try:
             from src.specialists.platform_configs import PLATFORM_CONFIGS
@@ -360,15 +366,24 @@ class ChatOrchestrator:
                 platforms = all_platforms
             logger.info(f"使用用户指定平台: {platforms}")
         else:
-            platforms = all_platforms
+            # 无指定平台 → 默认 Tavily（Broad Web），与侧边栏行为一致
+            tavily_key = os.environ.get("TAVILY_API_KEY")
+            if tavily_key:
+                platforms = ["tavily"]
+                logger.info("聊天搜索未指定平台，默认使用 Tavily")
+            else:
+                platforms = all_platforms
+                logger.info("聊天搜索未指定平台且 Tavily 不可用，降级为全平台")
 
-        # 3. 使用 search_all_platforms_stream（与正常搜索面板同一路径）
+        # 4. 使用 search_all_platforms_stream（与正常搜索面板同一路径）
         search_items = []
         try:
             async for event in self._search.search_all_platforms_stream(
                 query=search_query,
                 platforms=platforms,
                 top_k=10,
+                learner_context=learner_context,
+                plan_id=plan_id,
             ):
                 stage = event.get("stage", "")
 

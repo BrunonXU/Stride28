@@ -273,6 +273,11 @@ class XhsSearcher:
 
     async def _init_browser(self):
         """启动 Playwright，加载 Cookie，初始化签名环境。"""
+        import traceback
+        caller_stack = "".join(traceback.format_stack()[-5:-1])
+        logger.warning(
+            "[XHS-TRIGGER] _init_browser 被触发！调用栈:\n%s", caller_stack
+        )
         logger.info("初始化小红书签名浏览器...")
         self._pw_cm = async_playwright()
         self._playwright = await self._pw_cm.start()
@@ -300,6 +305,7 @@ class XhsSearcher:
         if not need_login:
             try:
                 self._build_base_headers()
+                logger.warning("[XHS-TRIGGER] 正在向小红书发送 selfinfo 验证请求（风控敏感操作）")
                 self_info = await self._signed_request("GET", "/api/sns/web/v1/user/selfinfo", params={})
                 if self_info and self_info.get("result", {}).get("success"):
                     logger.info("小红书 cookie 验证通过")

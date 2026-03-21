@@ -1013,6 +1013,7 @@ class SearchOrchestrator:
 
             # 小红书：使用 XhsSearcher（MediaCrawler 签名 + httpx）
             if config.name == "xiaohongshu":
+                logger.warning("[XHS-TRIGGER] search_single_platform 触发小红书搜索: query='%s', limit=%d", query, limit)
                 results = await self._xhs_searcher.search(query, limit)
                 if results:
                     results.sort(key=_xhs_composite_score, reverse=True)

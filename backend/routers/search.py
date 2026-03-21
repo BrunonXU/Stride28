@@ -152,41 +152,10 @@ async def search_stream(body: SearchRequest, request: Request):
             orchestrator = SearchOrchestrator(llm_provider=llm)
 
             # ---- 构建学习者上下文（个性化质量评估）----
-            learner_context = None
-            if body.planId:
-                try:
-                    from src.specialists.quality_assessor import LearnerContext
-                    from backend import database
-
-                    # 查询学习者画像
-                    profile = database.get_learner_profile(body.planId)
-                    # 查询学习进度，构建轻量摘要
-                    progress = database.get_progress(body.planId)
-                    plan_summary = ""
-                    if progress:
-                        total_days = len(progress)
-                        completed_days = sum(1 for d in progress if d.get("completed"))
-                        lines = []
-                        for d in progress:
-                            day_num = d.get("dayNumber", 0)
-                            title = d.get("title", "")
-                            done = d.get("completed", False)
-                            prefix = "✅" if done else "🔵" if day_num == completed_days + 1 else "  "
-                            suffix = "（当前）" if (not done and day_num == completed_days + 1) else ""
-                            lines.append(f"{prefix} Day {day_num}: {title}{suffix}")
-                        plan_summary = f"进度：第{completed_days}天/共{total_days}天\n" + "\n".join(lines)
-
-                    learner_context = LearnerContext(
-                        query=body.query,
-                        goal=profile.get("goal", "") if profile else "",
-                        level=profile.get("level", "") if profile else "",
-                        background=profile.get("background", "") if profile else "",
-                        daily_hours=profile.get("dailyHours", "") if profile else "",
-                        plan_summary=plan_summary,
-                    )
-                    logger.info(f"[search] 学习者上下文已构建: goal={learner_context.goal}, level={learner_context.level}")
-                except Exception as e:
-                    logger.warning(f"[search] 构建学习者上下文失败（降级为通用评估）: {e}")
+            from backend.search_utils import build_learner_context
+            learner_context = build_learner_context(body.planId, body.query)
+            if learner_context:
+                logger.info(f"[search] 学习者上下文已构建: goal={learner_context.goal}, level={learner_context.level}")
 
             try:
                 async for event in orchestrator.search_all_platforms_stream(
