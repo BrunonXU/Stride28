@@ -1,0 +1,78 @@
+[
+  {
+    "id": "r01",
+    "domain": "Python",
+    "seed_materials": [
+      {
+        "title": "Python asyncio 官方文档精读",
+        "content": "asyncio 是 Python 3.4 引入的标准库，提供了事件循环、协程、Task 等核心概念。事件循环是 asyncio 的核心，负责调度和执行协程。使用 async def 定义协程函数，await 关键字用于挂起协程等待结果。asyncio.run() 是启动事件循环的推荐方式。Task 是对协程的封装，可以并发执行多个协程。asyncio.gather() 可以同时运行多个协程并收集结果。asyncio.create_task() 用于创建 Task 对象。信号量 asyncio.Semaphore 可以限制并发数量。",
+        "metadata": {"source_tier": "broad_web", "platform": "tavily"}
+      },
+      {
+        "title": "B站 Python 协程从入门到实战",
+        "content": "协程是一种用户态的轻量级线程，不需要操作系统调度。Python 的协程通过 async/await 语法实现。与多线程相比，协程没有线程切换开销，也不需要锁机制。协程适合 IO 密集型任务，如网络请求、文件读写。实战案例：用 aiohttp 并发爬取多个网页，速度比同步请求快 10 倍。注意事项：协程中不能使用阻塞操作如 time.sleep()，应使用 asyncio.sleep()。",
+        "metadata": {"source_tier": "community", "platform": "bilibili"}
+      },
+      {
+        "title": "Python 多线程 vs 多进程 vs 协程对比",
+        "content": "多线程受 GIL 限制，同一时刻只有一个线程执行 Python 字节码，适合 IO 密集型。多进程绕过 GIL，适合 CPU 密集型，但进程间通信成本高。协程是单线程内的并发，通过事件循环调度，开销最小。选择建议：IO 密集用协程，CPU 密集用多进程，简单并发用多线程。性能对比：1000 个并发请求，协程耗时 2s，多线程 8s，同步 120s。",
+        "metadata": {"source_tier": "community", "platform": "xiaohongshu"}
+      }
+    ],
+    "queries": [
+      {
+        "query": "asyncio 事件循环怎么用",
+        "expected_hit_titles": ["Python asyncio 官方文档精读"],
+        "content_type": "study_guide"
+      },
+      {
+        "query": "协程和多线程有什么区别",
+        "expected_hit_titles": ["Python 多线程 vs 多进程 vs 协程对比", "B站 Python 协程从入门到实战"],
+        "content_type": "flashcards"
+      },
+      {
+        "query": "aiohttp 并发爬虫实战",
+        "expected_hit_titles": ["B站 Python 协程从入门到实战"],
+        "content_type": "study_guide"
+      }
+    ]
+  },
+  {
+    "id": "r02",
+    "domain": "React",
+    "seed_materials": [
+      {
+        "title": "React Hooks 完全指南",
+        "content": "useState 是最基础的 Hook，用于在函数组件中管理状态。useEffect 用于处理副作用，如数据获取、订阅、DOM 操作。useEffect 的依赖数组控制执行时机：空数组只在挂载时执行，有依赖则在依赖变化时执行。useCallback 缓存函数引用，避免子组件不必要的重渲染。useMemo 缓存计算结果，适合昂贵的计算。useRef 创建可变引用，不触发重渲染。自定义 Hook 以 use 开头，可以复用状态逻辑。",
+        "metadata": {"source_tier": "broad_web", "platform": "tavily"}
+      },
+      {
+        "title": "Zustand 状态管理实战",
+        "content": "Zustand 是一个轻量级状态管理库，API 简洁，不需要 Provider 包裹。创建 store 使用 create 函数，返回一个 hook。支持中间件：persist 持久化、devtools 调试、immer 不可变更新。与 Redux 对比：Zustand 无 boilerplate，不需要 action type、reducer、dispatch。适合中小型项目，大型项目也能胜任。性能优化：使用 selector 避免不必要的重渲染，shallow 比较。",
+        "metadata": {"source_tier": "broad_web", "platform": "tavily"}
+      },
+      {
+        "title": "GitHub awesome-react 精选资源",
+        "content": "React 生态精选：路由用 React Router v6，状态管理推荐 Zustand 或 Jotai，表单用 React Hook Form，数据获取用 TanStack Query（原 React Query），UI 组件库推荐 shadcn/ui 或 Radix。构建工具推荐 Vite，比 CRA 快 10 倍。测试用 Vitest + Testing Library。TypeScript 是标配，提供类型安全。",
+        "metadata": {"source_tier": "developer", "platform": "github"}
+      }
+    ],
+    "queries": [
+      {
+        "query": "useEffect 依赖数组怎么用",
+        "expected_hit_titles": ["React Hooks 完全指南"],
+        "content_type": "study_guide"
+      },
+      {
+        "query": "Zustand 和 Redux 哪个好",
+        "expected_hit_titles": ["Zustand 状态管理实战"],
+        "content_type": "flashcards"
+      },
+      {
+        "query": "React 项目推荐用什么构建工具",
+        "expected_hit_titles": ["GitHub awesome-react 精选资源"],
+        "content_type": "study_guide"
+      }
+    ]
+  }
+]
