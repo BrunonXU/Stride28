@@ -86,6 +86,9 @@ Stride28 把整条链路串起来，变成一个持续累积上下文的 workflo
 
 <p align="center">
   <img src="docs/assets/学习指南页面.png" alt="学习指南" width="400" />
+</p>
+
+<p align="center">
   <img src="docs/assets/思维导图.png" alt="思维导图" width="400" />
 </p>
 
