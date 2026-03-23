@@ -85,11 +85,11 @@ Stride28 把整条链路串起来，变成一个持续累积上下文的 workflo
 双层记忆：Working Memory 保留最近对话原文，Episodic Memory 把历史压缩为结构化摘要。清空对话 ≠ 遗忘——你之前的困惑点、学习偏好会持续影响后续生成。
 
 <p align="center">
-  <img src="docs/assets/学习指南页面.png" alt="学习指南" width="400" />
+  <img src="docs/assets/学习指南页面.png" alt="学习指南" width="800" />
 </p>
 
 <p align="center">
-  <img src="docs/assets/思维导图.png" alt="思维导图" width="400" />
+  <img src="docs/assets/思维导图.png" alt="思维导图" width="800" />
 </p>
 
 ---
