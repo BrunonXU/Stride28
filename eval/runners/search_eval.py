@@ -88,9 +88,18 @@ async def _run_single_search(
             errors.append(event.get("message", "unknown"))
 
     total_ms = round((time.perf_counter() - t0) * 1000, 1)
+
+    # 提取纯搜索 pipeline 耗时（done 事件的时间戳）
+    search_ms = total_ms  # fallback
+    for ev in stage_events:
+        if ev.get("stage") == "done":
+            search_ms = ev["ts_ms"]
+            break
+
     return {
         "results": results,
         "total_ms": total_ms,
+        "search_ms": search_ms,
         "stage_events": stage_events,
         "errors": errors,
     }
@@ -188,6 +197,7 @@ async def run_search_eval(skip_rewrite_delta: bool = False) -> dict:
 
         results = search_data["results"]
         total_ms = search_data["total_ms"]
+        search_ms = search_data["search_ms"]
         errors = search_data["errors"]
 
         # ---- LLM-as-Judge（top 5）----
@@ -261,12 +271,13 @@ async def run_search_eval(skip_rewrite_delta: bool = False) -> dict:
             "reject_rate": reject_rate,
             "tier_distribution": tier_dist,
             "rewrite_delta": rewrite_delta,
+            "search_ms": search_ms,
             "total_ms": total_ms,
             "errors": errors,
             "top5_details": judge_scores,
         }
         all_case_results.append(case_result)
-        all_latencies.append(total_ms)
+        all_latencies.append(search_ms)
         all_errors.extend(errors)
 
     # ---- 汇总 ----

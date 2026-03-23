@@ -68,7 +68,7 @@ def generate_markdown(search_report: dict | None, rag_report: dict | None) -> st
                 f"Judge: {c['avg_judge_score']}/5 | "
                 f"KW Hit: {_pct(c['keyword_hit_rate'])} | "
                 f"Rewrite Delta: {_fmt_delta(c.get('rewrite_delta'))} | "
-                f"Latency: {_fmt_ms(c['total_ms'])} | "
+                f"Search: {_fmt_ms(c.get('search_ms', 0))} | "
                 f"Results: {c['result_count']}"
             )
             # tier distribution
@@ -136,7 +136,7 @@ def generate_markdown(search_report: dict | None, rag_report: dict | None) -> st
         lines.append(
             f"- Search: LLM-Judge avg {s.get('avg_judge_score', 0)}/5.0, "
             f"keyword hit {_pct(s.get('avg_keyword_hit', 0))}, "
-            f"P50 latency {_fmt_ms(s.get('latency_p50_ms', 0))}, "
+            f"P50 search latency {_fmt_ms(s.get('latency_p50_ms', 0))}, "
             f"success rate {_pct(s.get('search_success_rate', 0))}"
         )
         if s.get("avg_rewrite_delta") is not None:

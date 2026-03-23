@@ -28,6 +28,10 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# 加载 .env（后端由 main.py 加载，eval 独立运行需要自己加载）
+from dotenv import load_dotenv
+load_dotenv(ROOT / ".env")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",

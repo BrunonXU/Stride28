@@ -22,8 +22,6 @@
   <a href="#它解决什么问题">为什么</a> •
   <a href="#核心能力">核心能力</a> •
   <a href="#快速开始">快速开始</a> •
-  <a href="#架构">架构</a> •
-  <a href="#路线图">路线图</a> •
   <a href="#参与贡献">参与贡献</a>
 </p>
 
@@ -51,9 +49,10 @@ Stride28 把整条链路串起来，变成一个持续累积上下文的 workflo
 
 ### 🔍 多源搜索聚合
 
-从 6 个平台并发搜索，经过两阶段质量漏斗（互动数据初筛 → LLM 质量评估），只有高质量内容进入后续链路。不是简单的 API 聚合——每个平台有独立的反爬策略、数据提取逻辑和质量评分权重。
+四层搜索架构（Community / Developer / Academic / Broad Web），6 个平台并发搜索，不同层级走不同的数据路径：UGC 平台经过两阶段质量漏斗（互动数据初筛 → LLM 质量评估），arXiv 论文绕过漏斗直通展示，Tavily 通用网页跳过浏览器提取直接 LLM 评估。支持 Context-Aware Query Rewrite，同一查询按平台类型生成针对性关键词。
 
-支持平台：小红书 · 知乎 · B站 · YouTube · GitHub · Google
+支持平台：小红书 · 知乎 · B站 · GitHub · arXiv · Tavily
+
 
 <p align="center">
   <img src="docs/assets/search-demo-compressed.gif" alt="多源搜索" width="800" />
@@ -100,18 +99,7 @@ Stride28 把整条链路串起来，变成一个持续累积上下文的 workflo
 - LLM API Key（推荐 [DeepSeek](https://platform.deepseek.com/)，性价比最高）
 - [DashScope](https://dashscope.console.aliyun.com/) API Key（Embedding 必须）
 
-### Docker（推荐）
-
-```bash
-git clone https://github.com/BrunonXU/Stride28.git && cd Stride28
-cp .env.example .env
-# 编辑 .env，填入 API Key
-
-docker compose up -d
-# 前端: http://localhost  后端: http://localhost:8000
-```
-
-### 本地开发
+### 本地开发（推荐）
 
 ```bash
 git clone https://github.com/BrunonXU/Stride28.git && cd Stride28
@@ -133,6 +121,19 @@ cd frontend && npm run dev
 # 打开 http://localhost:3000
 ```
 
+### Docker
+
+```bash
+git clone https://github.com/BrunonXU/Stride28.git && cd Stride28
+cp .env.example .env
+# 编辑 .env，填入 API Key
+
+docker compose up -d
+# 前端: http://localhost  后端: http://localhost:8000
+```
+
+> ℹ️ 搜索功能依赖 Playwright + Chromium，Docker 环境下可能需要额外配置，建议优先使用本地开发方式。
+
 ### 配置说明
 
 | 变量 | 必须 | 说明 |
@@ -147,44 +148,6 @@ cd frontend && npm run dev
 完整配置见 [`.env.example`](.env.example)。
 
 > 首次启动会注入示例学习规划（含搜索历史、材料、Studio 内容），可以直接体验完整流程。
-
----
-
-## 架构
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  React + TypeScript + Zustand + TailwindCSS             │
-│  三栏布局：材料 │ 对话 │ Studio                          │
-└────────────────────────┬────────────────────────────────┘
-                         │ REST API + SSE
-┌────────────────────────┴────────────────────────────────┐
-│  FastAPI                                                 │
-│  plans / chat / studio / search / resource / upload /    │
-│  notes / dev / provider                                  │
-├──────────────────────────────────────────────────────────┤
-│  agents/       TutorAgent + Episodic Memory              │
-│  providers/    OpenAI-compatible 抽象（4 家 LLM）         │
-│  specialists/  搜索模块（6 平台 + 两阶段漏斗）            │
-│  rag/          ChromaDB + Cross-Encoder Reranker         │
-├──────────────────────────────────────────────────────────┤
-│  SQLite (WAL) + ChromaDB (text-embedding-v2)             │
-│  LangSmith 全链路追踪                                     │
-└──────────────────────────────────────────────────────────┘
-```
-
----
-
-## 路线图
-
-**已完成：** NotebookLM 风格三栏 UI · 6 平台搜索聚合 · 两阶段质量漏斗 · 材料感知对话 · SQLite 持久化 · Episodic Memory · 动态 Prompt 组装 · 多 Provider 支持 · LangSmith 追踪 · RAG 分层注入 · Cross-Encoder Reranker · 覆盖优先 context budget · LangGraph Chat Orchestrator
-
-**进行中 / 计划：**
-- [ ] 7 种 Studio 工具的动态 prompt 优化
-- [ ] 进度环 UI 组件
-- [ ] RAG 评估 pipeline（hit@k）
-- [ ] 多模态材料理解（PDF 图片 + VL 模型）
-- [ ] Demo 视频 & 引导流程
 
 ---
 

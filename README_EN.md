@@ -52,9 +52,10 @@ Your materials, chat history, learner profile, and completion progress — all b
 
 ### 🔍 Multi-Source Search Aggregation
 
-Concurrent search across 6 platforms with a two-stage quality funnel (engagement metrics → LLM quality assessment). Each platform has its own anti-scraping strategy, data extraction logic, and quality scoring weights.
+Four-tier search architecture (Community / Developer / Academic / Broad Web) with concurrent search across 6 platforms. Different tiers follow different data paths: UGC platforms go through a two-stage quality funnel (engagement metrics → LLM quality assessment), arXiv papers bypass the funnel for direct display, and Tavily web results skip browser extraction for direct LLM evaluation. Supports Context-Aware Query Rewrite — the same query generates platform-specific keywords.
 
-Platforms: Xiaohongshu · Zhihu · Bilibili · YouTube · GitHub · Google
+Platforms: Xiaohongshu · Zhihu · Bilibili · GitHub · arXiv · Tavily
+
 
 <p align="center">
   <img src="docs/assets/search-demo-compressed.gif" alt="Multi-source search" width="800" />
@@ -166,7 +167,7 @@ See [`.env.example`](.env.example) for full configuration.
 ├──────────────────────────────────────────────────────────┤
 │  agents/       TutorAgent + Episodic Memory              │
 │  providers/    OpenAI-compatible abstraction (4 vendors)  │
-│  specialists/  Search module (6 platforms + 2-stage funnel)│
+│  specialists/  Search module (4-tier architecture, 6 platforms)│
 │  rag/          ChromaDB + Cross-Encoder Reranker         │
 ├──────────────────────────────────────────────────────────┤
 │  SQLite (WAL) + ChromaDB (text-embedding-v2)             │
@@ -177,13 +178,10 @@ See [`.env.example`](.env.example) for full configuration.
 ---
 
 ## Roadmap
-
-**Done:** NotebookLM-style three-panel UI · 6-platform search aggregation · Two-stage quality funnel · Material-aware chat · SQLite persistence · Episodic Memory · Dynamic prompt assembly · Multi-provider support · LangSmith tracing · RAG layered injection · Cross-Encoder Reranker · Coverage-first context budget · LangGraph Chat Orchestrator
+**Done:** NotebookLM-style three-panel UI · Four-tier search architecture (6 platforms + tier-based routing + Context-Aware Query Rewrite) · Two-stage quality funnel · Material-aware chat · SQLite persistence · Episodic Memory · Dynamic prompt assembly · Multi-provider support · LangSmith tracing · RAG layered injection · Cross-Encoder Reranker · Coverage-first context budget · LangGraph Chat Orchestrator · Lightweight auto-evaluation framework (Search / RAG / Latency)
 
 **In Progress / Planned:**
-- [ ] Dynamic prompt optimization for all 7 Studio tools
-- [ ] Progress ring UI component
-- [ ] RAG evaluation pipeline (hit@k)
+- [ ] Studio Prompt A/B evaluation
 - [ ] Multi-modal material understanding (PDF images + VL models)
 - [ ] Demo video & onboarding flow
 
