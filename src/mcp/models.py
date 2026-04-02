@@ -82,3 +82,28 @@ class SearchData(BaseModel):
 class LoginData(BaseModel):
     """登录结果"""
     message: str = ""
+
+
+class CommentItem(BaseModel):
+    """单条评论"""
+    text: str = ""
+    author: str = ""
+    likes: int = 0
+
+
+class NoteDetail(BaseModel):
+    """笔记详情"""
+    id: str = ""
+    title: str = ""
+    url: str = ""
+    author: str = ""
+    content: str = ""           # 正文全文
+    likes: int = 0
+    collected: int = 0          # 收藏数
+    comments_count: int = 0
+    shares: int = 0
+    image_urls: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
+    top_comments: List[CommentItem] = Field(default_factory=list)
+    note_type: str = ""         # normal | video
+    publish_time: str = ""

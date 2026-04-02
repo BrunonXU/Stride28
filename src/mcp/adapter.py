@@ -268,7 +268,12 @@ class XhsBrowserSearcher:
                 # 笔记类型
                 note_type = note_card.get("type") or "normal"
 
-                url = f"https://www.xiaohongshu.com/explore/{note_id}" if note_id else ""
+                url = (
+                    f"https://www.xiaohongshu.com/explore/{note_id}"
+                    f"?xsec_token={xsec_token}&xsec_source=pc_search"
+                ) if note_id and xsec_token else (
+                    f"https://www.xiaohongshu.com/explore/{note_id}" if note_id else ""
+                )
 
                 items.append(SearchResultItem(
                     id=str(note_id),
@@ -285,3 +290,155 @@ class XhsBrowserSearcher:
                 logger.warning("MCP: 解析 feed 失败: %s", e)
                 continue
         return items
+
+
+    async def get_note_detail(self, note_id: str, xsec_token: str = "") -> "NoteDetail":
+        """获取笔记详情：导航到笔记页，从 __INITIAL_STATE__ 提取正文、评论、图片"""
+        from src.mcp.models import NoteDetail, CommentItem
+
+        if not self._initialized:
+            await self.init_browser(headless=True)
+
+        # 构建 URL（带 xsec_token）
+        url = f"https://www.xiaohongshu.com/explore/{note_id}"
+        if xsec_token:
+            url += f"?xsec_token={xsec_token}&xsec_source=pc_search"
+
+        logger.info("MCP: 导航到笔记详情: %s", url)
+        await self._page.goto(url, wait_until="domcontentloaded", timeout=30000)
+
+        # 等待页面加载
+        try:
+            await self._page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception:
+            pass
+
+        try:
+            await self._page.wait_for_function(
+                """() => {
+                    return window.__INITIAL_STATE__ &&
+                           window.__INITIAL_STATE__.note &&
+                           window.__INITIAL_STATE__.note.noteDetailMap;
+                }""",
+                timeout=10000,
+            )
+        except Exception:
+            await self._page.wait_for_timeout(3000)
+
+        # 从 __INITIAL_STATE__ 提取笔记详情
+        raw_json = await self._page.evaluate("""(noteId) => {
+            try {
+                const state = window.__INITIAL_STATE__;
+                if (!state || !state.note || !state.note.noteDetailMap) return "";
+
+                const detailMap = state.note.noteDetailMap;
+                // noteDetailMap 可能用 noteId 或其他 key
+                let detail = detailMap[noteId];
+                if (!detail) {
+                    // 尝试遍历找到第一个
+                    const keys = Object.keys(detailMap);
+                    if (keys.length > 0) detail = detailMap[keys[0]];
+                }
+                if (!detail) return "";
+
+                // detail 可能有 .note 嵌套
+                const noteData = detail.note || detail;
+                return JSON.stringify(noteData);
+            } catch(e) {
+                return "";
+            }
+        }""", note_id)
+
+        if not raw_json:
+            logger.warning("MCP: 笔记详情为空 (note_id='%s')", note_id)
+            return NoteDetail(id=note_id, url=url)
+
+        try:
+            data = json.loads(raw_json)
+        except json.JSONDecodeError:
+            logger.error("MCP: 笔记详情 JSON 解析失败")
+            return NoteDetail(id=note_id, url=url)
+
+        # 解析正文
+        title = data.get("title") or ""
+        desc = data.get("desc") or ""
+
+        # 图片
+        image_list = data.get("imageList") or data.get("image_list") or []
+        image_urls = []
+        for img in image_list:
+            img_url = img.get("urlDefault") or img.get("url_default") or img.get("url") or ""
+            if img_url:
+                image_urls.append(img_url)
+
+        # 互动数据
+        interact = data.get("interactInfo") or data.get("interact_info") or {}
+        likes = self._safe_int(interact.get("likedCount") or interact.get("liked_count") or 0)
+        collected = self._safe_int(interact.get("collectedCount") or interact.get("collected_count") or 0)
+        comments_count = self._safe_int(interact.get("commentCount") or interact.get("comment_count") or 0)
+        shares = self._safe_int(interact.get("shareCount") or interact.get("share_count") or 0)
+
+        # 作者
+        user = data.get("user") or {}
+        author = user.get("nickname") or user.get("nick_name") or ""
+
+        # 标签
+        tag_list = data.get("tagList") or data.get("tag_list") or []
+        tags = [t.get("name", "") for t in tag_list if t.get("name")]
+
+        # 笔记类型
+        note_type = data.get("type") or "normal"
+
+        # 评论（从 __INITIAL_STATE__ 的 comments 部分提取）
+        comments = []
+        try:
+            comments_json = await self._page.evaluate("""(noteId) => {
+                try {
+                    const state = window.__INITIAL_STATE__;
+                    if (!state || !state.note || !state.note.noteDetailMap) return "[]";
+                    const detailMap = state.note.noteDetailMap;
+                    let detail = detailMap[noteId];
+                    if (!detail) {
+                        const keys = Object.keys(detailMap);
+                        if (keys.length > 0) detail = detailMap[keys[0]];
+                    }
+                    if (!detail || !detail.comments) return "[]";
+                    return JSON.stringify(detail.comments.slice(0, 20));
+                } catch(e) { return "[]"; }
+            }""", note_id)
+            raw_comments = json.loads(comments_json)
+            for c in raw_comments:
+                text = c.get("content") or ""
+                c_author = (c.get("userInfo") or {}).get("nickname") or ""
+                c_likes = self._safe_int(c.get("likeCount") or c.get("like_count") or 0)
+                if text:
+                    comments.append(CommentItem(text=text, author=c_author, likes=c_likes))
+        except Exception as e:
+            logger.warning("MCP: 评论提取失败: %s", e)
+
+        logger.info("MCP: 笔记详情提取完成: title='%s', 正文%d字, %d张图, %d条评论",
+                     title, len(desc), len(image_urls), len(comments))
+
+        return NoteDetail(
+            id=note_id,
+            title=title,
+            url=url,
+            author=author,
+            content=desc,
+            likes=likes,
+            collected=collected,
+            comments_count=comments_count,
+            shares=shares,
+            image_urls=image_urls,
+            tags=tags,
+            top_comments=comments,
+            note_type=note_type,
+        )
+
+    @staticmethod
+    def _safe_int(v) -> int:
+        try:
+            s = str(v).replace("+", "").replace("万", "0000")
+            return int(float(s))
+        except (ValueError, TypeError):
+            return 0

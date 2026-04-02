@@ -154,6 +154,56 @@ async def search_xiaohongshu(
 
 
 # ============================================================
+# Tool: 获取笔记详情
+# ============================================================
+
+@mcp.tool(
+    name="get_note_detail",
+    description=(
+        "获取小红书笔记的完整详情，包括正文、评论、图片、互动数据。"
+        "需要提供 note_id 和 xsec_token（从搜索结果中获取）。"
+        "需要先登录（login_xiaohongshu）。"
+    ),
+)
+async def get_note_detail(
+    note_id: str,
+    xsec_token: str = "",
+) -> str:
+    platform, tool_name = "xiaohongshu", "get_note_detail"
+
+    lock = lifecycle.get_lock(platform)
+    async with lock:
+        try:
+            searcher = await lifecycle.get_searcher(platform)
+
+            if not await searcher.check_auth():
+                return EnvelopeBuilder.error(
+                    platform, tool_name, ErrorCode.LOGIN_REQUIRED,
+                    "小红书未登录，请先调用 login_xiaohongshu",
+                )
+
+            detail = await asyncio.wait_for(
+                searcher.get_note_detail(note_id, xsec_token),
+                timeout=30,
+            )
+            lifecycle.reset_failures(platform)
+            return EnvelopeBuilder.success(
+                platform, tool_name, detail.model_dump(),
+            )
+
+        except asyncio.TimeoutError:
+            return EnvelopeBuilder.error(
+                platform, tool_name, ErrorCode.SEARCH_TIMEOUT,
+                "获取详情超时（30秒）",
+            )
+        except Exception as e:
+            logger.exception("获取详情异常")
+            return EnvelopeBuilder.error(
+                platform, tool_name, ErrorCode.UNKNOWN_ERROR, str(e),
+            )
+
+
+# ============================================================
 # 优雅退出
 # ============================================================
 
