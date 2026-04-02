@@ -9,6 +9,7 @@ import logging
 from typing import Dict, Optional
 
 from src.mcp.adapter import XhsBrowserSearcher
+from src.mcp.zhihu_adapter import ZhihuBrowserSearcher
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class LifecycleManager:
     """平台适配器生命周期管理"""
 
     def __init__(self):
-        self._searchers: Dict[str, XhsBrowserSearcher] = {}
+        self._searchers: Dict[str, object] = {}
         self._locks: Dict[str, asyncio.Lock] = {}
         self._failures: Dict[str, int] = {}
 
@@ -28,9 +29,14 @@ class LifecycleManager:
             self._locks[platform] = asyncio.Lock()
         return self._locks[platform]
 
-    async def get_searcher(self, platform: str) -> XhsBrowserSearcher:
+    async def get_searcher(self, platform: str):
         if platform not in self._searchers:
-            self._searchers[platform] = XhsBrowserSearcher()
+            if platform == "xiaohongshu":
+                self._searchers[platform] = XhsBrowserSearcher()
+            elif platform == "zhihu":
+                self._searchers[platform] = ZhihuBrowserSearcher()
+            else:
+                raise ValueError(f"未知平台: {platform}")
             logger.info("平台 %s 搜索器已创建", platform)
         return self._searchers[platform]
 

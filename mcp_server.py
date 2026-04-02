@@ -204,6 +204,125 @@ async def get_note_detail(
 
 
 # ============================================================
+# Tool: 搜索知乎
+# ============================================================
+
+@mcp.tool(
+    name="search_zhihu",
+    description=(
+        "搜索知乎内容（问答、专栏、视频）。"
+        "不需要登录即可使用。"
+        "返回标题、URL、类型、赞数、作者等信息。"
+        "搜索结果中 note_type 为 answer 的条目，xsec_token 字段存储 question_id，"
+        "可用于调用 get_zhihu_question 获取完整回答。"
+    ),
+)
+async def search_zhihu(query: str, limit: int = 10) -> str:
+    platform, tool_name = "zhihu", "search_zhihu"
+
+    if lifecycle.is_crashed(platform):
+        return EnvelopeBuilder.error(
+            platform, tool_name, ErrorCode.BROWSER_CRASHED,
+            "浏览器已崩溃，请重启 MCP Server",
+        )
+
+    lock = lifecycle.get_lock(platform)
+    async with lock:
+        try:
+            searcher = await lifecycle.get_searcher(platform)
+            if not await searcher.check_auth():
+                return EnvelopeBuilder.error(
+                    platform, tool_name, ErrorCode.UNKNOWN_ERROR,
+                    "知乎浏览器初始化失败",
+                )
+            search_data = await asyncio.wait_for(
+                searcher.search(query, limit), timeout=30,
+            )
+            lifecycle.reset_failures(platform)
+            return EnvelopeBuilder.success(platform, tool_name, search_data.model_dump())
+        except asyncio.TimeoutError:
+            return EnvelopeBuilder.error(
+                platform, tool_name, ErrorCode.SEARCH_TIMEOUT, "搜索超时（30秒）",
+            )
+        except Exception as e:
+            lifecycle.record_failure(platform)
+            logger.exception("知乎搜索异常")
+            return EnvelopeBuilder.error(platform, tool_name, ErrorCode.UNKNOWN_ERROR, str(e))
+
+
+# ============================================================
+# Tool: 获取知乎问题回答
+# ============================================================
+
+@mcp.tool(
+    name="get_zhihu_question",
+    description=(
+        "获取知乎问题的详情和 top N 回答。"
+        "需要提供 question_id（从搜索结果的 xsec_token 字段获取）。"
+        "返回问题标题、描述、以及每个回答的正文、赞数、作者。"
+    ),
+)
+async def get_zhihu_question(question_id: str, limit: int = 5) -> str:
+    platform, tool_name = "zhihu", "get_zhihu_question"
+
+    lock = lifecycle.get_lock(platform)
+    async with lock:
+        try:
+            searcher = await lifecycle.get_searcher(platform)
+            if not await searcher.check_auth():
+                return EnvelopeBuilder.error(
+                    platform, tool_name, ErrorCode.UNKNOWN_ERROR,
+                    "知乎浏览器初始化失败",
+                )
+            data = await asyncio.wait_for(
+                searcher.get_question_answers(question_id, limit), timeout=30,
+            )
+            lifecycle.reset_failures(platform)
+            return EnvelopeBuilder.success(platform, tool_name, data)
+        except asyncio.TimeoutError:
+            return EnvelopeBuilder.error(
+                platform, tool_name, ErrorCode.SEARCH_TIMEOUT, "获取回答超时（30秒）",
+            )
+        except Exception as e:
+            logger.exception("知乎问题获取异常")
+            return EnvelopeBuilder.error(platform, tool_name, ErrorCode.UNKNOWN_ERROR, str(e))
+
+
+# ============================================================
+# Tool: 登录知乎
+# ============================================================
+
+@mcp.tool(
+    name="login_zhihu",
+    description=(
+        "登录知乎账号。"
+        "调用后会弹出浏览器窗口，需要手动登录。"
+        "登录成功后，get_zhihu_question 可以获取完整回答内容。"
+        "search_zhihu 不需要登录也能用。"
+    ),
+)
+async def login_zhihu() -> str:
+    platform, tool_name = "zhihu", "login_zhihu"
+    lock = lifecycle.get_lock(platform)
+    async with lock:
+        try:
+            searcher = await lifecycle.get_searcher(platform)
+            await searcher.login(timeout=300)
+            await lifecycle.destroy_searcher(platform)
+            return EnvelopeBuilder.success(
+                platform, tool_name,
+                LoginData(message="知乎登录成功").model_dump(),
+            )
+        except asyncio.TimeoutError:
+            return EnvelopeBuilder.error(
+                platform, tool_name, ErrorCode.LOGIN_TIMEOUT, "登录超时（5分钟）",
+            )
+        except Exception as e:
+            logger.exception("知乎登录异常")
+            return EnvelopeBuilder.error(platform, tool_name, ErrorCode.UNKNOWN_ERROR, str(e))
+
+
+# ============================================================
 # 优雅退出
 # ============================================================
 
