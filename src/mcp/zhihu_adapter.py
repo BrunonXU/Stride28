@@ -142,10 +142,16 @@ class ZhihuBrowserSearcher:
             url = f"{_ZHIHU_URL}/question/{question_id}"
             logger.info("MCP: 导航到知乎问题页: %s", url)
             await tab.goto(url, wait_until="domcontentloaded", timeout=15000)
+            # 等待页面网络空闲
             try:
-                await tab.wait_for_selector(".AnswerItem,.List-item,.AnswerCard", timeout=5000)
+                await tab.wait_for_load_state("networkidle", timeout=10000)
             except Exception:
                 pass
+            try:
+                await tab.wait_for_selector(".AnswerItem,.List-item,.AnswerCard", timeout=8000)
+            except Exception:
+                logger.warning("MCP: 知乎问题页回答元素未找到，等待额外 3 秒")
+                await tab.wait_for_timeout(3000)
 
             data = await tab.evaluate("""(limit) => {
                 const detailEl = document.querySelector(
