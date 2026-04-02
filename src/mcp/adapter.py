@@ -325,25 +325,22 @@ class XhsBrowserSearcher:
         except Exception:
             await self._page.wait_for_timeout(3000)
 
-        # 从 __INITIAL_STATE__ 提取笔记详情
+        # 从 __INITIAL_STATE__ 提取笔记详情（完整 detail 包含 note + comments）
         raw_json = await self._page.evaluate("""(noteId) => {
             try {
                 const state = window.__INITIAL_STATE__;
                 if (!state || !state.note || !state.note.noteDetailMap) return "";
 
                 const detailMap = state.note.noteDetailMap;
-                // noteDetailMap 可能用 noteId 或其他 key
                 let detail = detailMap[noteId];
                 if (!detail) {
-                    // 尝试遍历找到第一个
                     const keys = Object.keys(detailMap);
                     if (keys.length > 0) detail = detailMap[keys[0]];
                 }
                 if (!detail) return "";
 
-                // detail 可能有 .note 嵌套
-                const noteData = detail.note || detail;
-                return JSON.stringify(noteData);
+                // 返回完整 detail（包含 note + comments）
+                return JSON.stringify(detail);
             } catch(e) {
                 return "";
             }
@@ -354,10 +351,13 @@ class XhsBrowserSearcher:
             return NoteDetail(id=note_id, url=url)
 
         try:
-            data = json.loads(raw_json)
+            detail = json.loads(raw_json)
         except json.JSONDecodeError:
             logger.error("MCP: 笔记详情 JSON 解析失败")
             return NoteDetail(id=note_id, url=url)
+
+        # detail 结构: { note: {...}, comments: { list: [...], cursor, hasMore } }
+        data = detail.get("note") or detail
 
         # 解析正文
         title = data.get("title") or ""
@@ -389,30 +389,27 @@ class XhsBrowserSearcher:
         # 笔记类型
         note_type = data.get("type") or "normal"
 
-        # 评论（从 __INITIAL_STATE__ 的 comments 部分提取）
+        # 评论（从 detail.comments.list 提取）
         comments = []
         try:
-            comments_json = await self._page.evaluate("""(noteId) => {
-                try {
-                    const state = window.__INITIAL_STATE__;
-                    if (!state || !state.note || !state.note.noteDetailMap) return "[]";
-                    const detailMap = state.note.noteDetailMap;
-                    let detail = detailMap[noteId];
-                    if (!detail) {
-                        const keys = Object.keys(detailMap);
-                        if (keys.length > 0) detail = detailMap[keys[0]];
-                    }
-                    if (!detail || !detail.comments) return "[]";
-                    return JSON.stringify(detail.comments.slice(0, 20));
-                } catch(e) { return "[]"; }
-            }""", note_id)
-            raw_comments = json.loads(comments_json)
-            for c in raw_comments:
+            comments_data = detail.get("comments") or {}
+            comment_list = comments_data.get("list") or []
+            for c in comment_list[:20]:
                 text = c.get("content") or ""
-                c_author = (c.get("userInfo") or {}).get("nickname") or ""
+                c_user = c.get("userInfo") or c.get("user_info") or {}
+                c_author = c_user.get("nickname") or ""
                 c_likes = self._safe_int(c.get("likeCount") or c.get("like_count") or 0)
                 if text:
                     comments.append(CommentItem(text=text, author=c_author, likes=c_likes))
+                # 子评论也提取
+                sub_comments = c.get("subComments") or c.get("sub_comments") or []
+                for sc in sub_comments[:5]:
+                    sc_text = sc.get("content") or ""
+                    sc_user = sc.get("userInfo") or sc.get("user_info") or {}
+                    sc_author = sc_user.get("nickname") or ""
+                    sc_likes = self._safe_int(sc.get("likeCount") or sc.get("like_count") or 0)
+                    if sc_text:
+                        comments.append(CommentItem(text=sc_text, author=sc_author, likes=sc_likes))
         except Exception as e:
             logger.warning("MCP: 评论提取失败: %s", e)
 
